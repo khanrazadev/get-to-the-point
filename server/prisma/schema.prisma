@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  createdAt DateTime  @default(now())
+
+  contents  Content[]
+  chats     ChatSession[]
+}
+
+model Content {
+  id          String       @id @default(uuid())
+  userId      String
+  type        ContentType
+  sourceUrl   String?
+  filePath    String?
+  title       String?
+  status      ContentStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transcript  Transcript?
+  summary     Summary?
+  chunks      Chunk[]
+  chats       ChatSession[]
+}
+
+model Transcript {
+  id        String   @id @default(uuid())
+  contentId String   @unique
+  text      String
+  language  String?
+  createdAt DateTime @default(now())
+
+  content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+}
+
+model Summary {
+  id        String   @id @default(uuid())
+  contentId String   @unique
+  text      String
+  createdAt DateTime @default(now())
+
+  content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+}
+
+model Chunk {
+  id         String   @id @default(uuid())
+  contentId  String
+  text       String
+  chunkIndex Int
+
+  content    Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, chunkIndex])
+}
+
+model ChatSession {
+  id        String   @id @default(uuid())
+  userId    String
+  contentId String
+  createdAt DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   Content   @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  messages  Message[]
+}
+
+model Message {
+  id        String      @id @default(uuid())
+  sessionId String
+  role      MessageRole
+  content   String
+  createdAt DateTime    @default(now())
+
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+enum ContentType {
+  YOUTUBE
+  INSTAGRAM
+  AUDIO
+  VIDEO
+}
+
+enum ContentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
