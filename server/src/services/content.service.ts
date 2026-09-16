@@ -73,3 +73,13 @@ export async function deleteContent(id: string) {
         },
     });
 }
+
+export async function updateContentStatus(
+  id: string,
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED",
+) {
+  return prisma.content.update({
+    where: { id },
+    data: { status },
+  });
+}

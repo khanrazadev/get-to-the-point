@@ -1,7 +1,25 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { prisma } from "../lib/prisma.js";
 
 const SARVAM_API_URL = "https://api.sarvam.ai/speech-to-text";
+
+
+type CreateTranscriptInput = {
+  contentId: string;
+  text: string;
+  language?: string;
+};
+
+export async function createTranscript(data: CreateTranscriptInput) {
+  return prisma.transcript.create({
+    data: {
+      contentId: data.contentId,
+      text: data.text,
+      language: data.language ?? null,
+    },
+  });
+}
 
 export async function transcribeAudio(filePath: string) {
   const apiKey = process.env.SARVAM_API_KEY;
@@ -40,3 +58,4 @@ export async function transcribeAudio(filePath: string) {
 
   return response.json();
 }
+

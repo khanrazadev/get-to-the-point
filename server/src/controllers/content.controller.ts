@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { AppError } from "../errors/AppError.js";
-import { createContent, getAllContent, getContentById, deleteContent } from "../services/content.service.js";
+import { createContent, getAllContent, getContentById, deleteContent, updateContentStatus } from "../services/content.service.js";
 import { extractAudio } from "../services/media.service.js";
-import { transcribeAudio } from "../services/transcription.service.js";
+import { transcribeAudio, createTranscript } from "../services/transcription.service.js";
 
 export async function createContentController(
   req: Request,
@@ -77,22 +77,17 @@ export async function deleteContentController(
   }
 }
 
-
 export async function uploadContentController(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
+  let contentId: string | undefined;
+
   try {
     if (!req.file) {
       throw new AppError("Media file is required", 400);
     }
-
-    const audioPath = await extractAudio(req.file.path);
-    const transcription = await transcribeAudio(audioPath);
-
-    console.log("Audio extracted:", audioPath);
-    console.log("Transcription:", transcription);
 
     const content = await createContent({
       type: req.file.mimetype.startsWith("audio/")
@@ -102,14 +97,30 @@ export async function uploadContentController(
       title: req.file.originalname,
     });
 
+    contentId = content.id;
+
+    await updateContentStatus(content.id, "PROCESSING");
+
+    const audioPath = await extractAudio(req.file.path);
+    const transcription = await transcribeAudio(audioPath);
+
+    await createTranscript({
+      contentId: content.id,
+      text: transcription.transcript,
+      language: transcription.language_code,
+    });
+
+    await updateContentStatus(content.id, "COMPLETED");
+
     res.status(201).json({
       success: true,
-      data: {
-        content,
-        transcription
-      },
+      data: content,
     });
   } catch (error) {
+    if (contentId) {
+      await updateContentStatus(contentId, "FAILED");
+    }
+
     next(error);
   }
 }
