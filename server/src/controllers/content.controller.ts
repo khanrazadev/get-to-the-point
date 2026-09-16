@@ -3,6 +3,7 @@ import { AppError } from "../errors/AppError.js";
 import { createContent, getAllContent, getContentById, deleteContent, updateContentStatus } from "../services/content.service.js";
 import { extractAudio } from "../services/media.service.js";
 import { transcribeAudio, createTranscript } from "../services/transcription.service.js";
+import { createSummary, generateSummary } from "../services/summary.service.js";
 
 export async function createContentController(
   req: Request,
@@ -77,6 +78,11 @@ export async function deleteContentController(
   }
 }
 
+
+/**
+ * Processes an uploaded media file by extracting audio, generating a
+ * transcript, generating a summary, and persisting the results.
+ */
 export async function uploadContentController(
   req: Request,
   res: Response,
@@ -110,6 +116,12 @@ export async function uploadContentController(
       language: transcription.language_code,
     });
 
+    const summary = await generateSummary(transcription.transcript);
+
+    await createSummary({
+      contentId: content.id,
+      text: summary,
+    });
     await updateContentStatus(content.id, "COMPLETED");
 
     res.status(201).json({
