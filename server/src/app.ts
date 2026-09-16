@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { prisma } from "./lib/prisma.js";
 import contentRoutes from "./routes/content.routes.js";
+import { errorMiddleware } from "./middleware/error.middleware.js";
 
 
 const app = express();
@@ -35,5 +36,6 @@ app.get("/health", async (req, res) => {
 });
 
 app.use("/api/content", contentRoutes)
+app.use(errorMiddleware);
 
 export default app;

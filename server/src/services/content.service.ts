@@ -17,7 +17,7 @@ export async function createContent(data: CreateContentInput) {
     if (!user) {
         throw new Error("Development user not found");
     }
-    
+
     return prisma.content.create({
         data: {
             userId: user.id,
@@ -34,6 +34,42 @@ export async function createContent(data: CreateContentInput) {
         },
     });
 
+}
 
+/*
+ * Retrieves all content records.
+ *
+ * @returns A list of all content records.
+ */
+export async function getAllContent() {
+    return prisma.content.findMany({
+        orderBy: {
+            createdAt: "desc",
+        },
+    });
+}
 
+/*
+ * Retrieves a content record by its ID.
+ *
+ * @param id The ID of the content record to retrieve.
+ * @returns The content record if found, otherwise null.
+*/
+export async function getContentById(id: string) {
+    return prisma.content.findUnique({
+        where: {
+            id: id,
+        },
+    });
+}
+
+/*
+    * Deletes a content record by its ID.   
+*/
+export async function deleteContent(id: string) {
+    return prisma.content.delete({
+        where: {
+            id: id,
+        },
+    });
 }
