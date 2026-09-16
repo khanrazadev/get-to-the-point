@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { AppError } from "../errors/AppError.js";
 import { createContent, getAllContent, getContentById, deleteContent } from "../services/content.service.js";
+import { extractAudio } from "../services/media.service.js";
+import { transcribeAudio } from "../services/transcription.service.js";
 
 export async function createContentController(
   req: Request,
@@ -86,6 +88,12 @@ export async function uploadContentController(
       throw new AppError("Media file is required", 400);
     }
 
+    const audioPath = await extractAudio(req.file.path);
+    const transcription = await transcribeAudio(audioPath);
+
+    console.log("Audio extracted:", audioPath);
+    console.log("Transcription:", transcription);
+
     const content = await createContent({
       type: req.file.mimetype.startsWith("audio/")
         ? "AUDIO"
@@ -96,7 +104,10 @@ export async function uploadContentController(
 
     res.status(201).json({
       success: true,
-      data: content,
+      data: {
+        content,
+        transcription
+      },
     });
   } catch (error) {
     next(error);
