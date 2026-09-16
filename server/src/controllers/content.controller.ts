@@ -74,3 +74,31 @@ export async function deleteContentController(
     next(error);
   }
 }
+
+
+export async function uploadContentController(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (!req.file) {
+      throw new AppError("Media file is required", 400);
+    }
+
+    const content = await createContent({
+      type: req.file.mimetype.startsWith("audio/")
+        ? "AUDIO"
+        : "VIDEO",
+      filePath: req.file.path,
+      title: req.file.originalname,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: content,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
