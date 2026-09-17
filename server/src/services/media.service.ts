@@ -42,3 +42,46 @@ export async function extractAudio(inputPath: string) {
 export async function deleteFile(filePath: string) {
   await fs.unlink(filePath);
 }
+
+
+export async function splitAudioIntoChunks(inputPath: string) {
+  const outputPattern = path.join(
+    path.dirname(inputPath),
+    `${path.basename(inputPath, path.extname(inputPath))}-chunk-%03d.mp3`,
+  );
+
+  await execFileAsync(ffmpegPath, [
+    "-i",
+    inputPath,
+    "-f",
+    "segment",
+    "-segment_time",
+    "25",
+    "-reset_timestamps",
+    "1",
+    "-ac",
+    "1",
+    "-ar",
+    "16000",
+    "-b:a",
+    "64k",
+    outputPattern,
+  ]);
+
+  const directory = path.dirname(inputPath);
+  const baseName = path.basename(
+    inputPath,
+    path.extname(inputPath),
+  );
+
+  const files = await fs.readdir(directory);
+
+  return files
+    .filter(
+      (file) =>
+        file.startsWith(`${baseName}-chunk-`) &&
+        file.endsWith(".mp3"),
+    )
+    .map((file) => path.join(directory, file))
+    .sort();
+}

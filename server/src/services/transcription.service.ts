@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+
 import { prisma } from "../lib/prisma.js";
+import { splitAudioIntoChunks, deleteFile } from "./media.service.js";
 
 const SARVAM_API_URL = "https://api.sarvam.ai/speech-to-text";
 
@@ -27,7 +29,7 @@ export async function createTranscript(data: CreateTranscriptInput) {
   });
 }
 
-export async function transcribeAudio(filePath: string) {
+async function transcribeChunk(filePath: string) {
   const apiKey = process.env.SARVAM_API_KEY;
 
   if (!apiKey) {
@@ -63,4 +65,29 @@ export async function transcribeAudio(filePath: string) {
   }
 
   return response.json();
+}
+
+export async function transcribeAudio(filePath: string) {
+  const chunks = await splitAudioIntoChunks(filePath);
+
+  try {
+    const transcripts: string[] = [];
+
+    for (const chunk of chunks) {
+      const result = await transcribeChunk(chunk);
+
+      transcripts.push(result.transcript);
+    }
+
+    return {
+      transcript: transcripts.join(" "),
+      language_code: undefined,
+    };
+  } finally {
+    await Promise.all(
+      chunks.map((chunk) =>
+        deleteFile(chunk).catch(() => {}),
+      ),
+    );
+  }
 }

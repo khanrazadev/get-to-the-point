@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../errors/AppError.js";
+
 import {
   createContent,
   getAllContent,
@@ -9,16 +10,22 @@ import {
   deleteContent,
   updateContentStatus,
 } from "../services/content.service.js";
+
 import { deleteFile, extractAudio } from "../services/media.service.js";
+
 import {
   transcribeAudio,
   createTranscript,
 } from "../services/transcription.service.js";
+
 import {
   createSummary,
   generateSummary,
 } from "../services/summary.service.js";
+
 import { storeTranscriptEmbeddings } from "../services/vector.service.js";
+
+import { downloadYoutubeAudio } from "../services/youtube.service.js";
 
 export async function createContentController(
   req: Request,
@@ -119,22 +126,15 @@ export async function uploadContentController(
 
     contentId = content.id;
 
-    await updateContentStatus(
-      content.id,
-      "PROCESSING",
-    );
+    await updateContentStatus(content.id, "PROCESSING");
 
-    audioPath = await extractAudio(
-      req.file.path,
-    );
+    audioPath = await extractAudio(req.file.path);
 
-    const transcription =
-      await transcribeAudio(audioPath);
+    const transcription = await transcribeAudio(audioPath);
 
     await createTranscript({
       contentId: content.id,
       text: transcription.transcript,
-      language: transcription.language_code,
     });
 
     await storeTranscriptEmbeddings({
@@ -151,10 +151,7 @@ export async function uploadContentController(
       text: summary,
     });
 
-    await updateContentStatus(
-      content.id,
-      "COMPLETED",
-    );
+    await updateContentStatus(content.id, "COMPLETED");
 
     const completedContent =
       await prisma.content.findUniqueOrThrow({
@@ -169,10 +166,81 @@ export async function uploadContentController(
     });
   } catch (error) {
     if (contentId) {
-      await updateContentStatus(
-        contentId,
-        "FAILED",
-      );
+      await updateContentStatus(contentId, "FAILED");
+    }
+
+    next(error);
+  } finally {
+    if (audioPath) {
+      await deleteFile(audioPath).catch(() => {});
+    }
+  }
+}
+
+export async function youtubeContentController(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  let contentId: string | undefined;
+  let audioPath: string | undefined;
+
+  try {
+    const { url } = req.body;
+
+    if (typeof url !== "string" || !url.trim()) {
+      throw new AppError("YouTube URL is required", 400);
+    }
+
+    audioPath = await downloadYoutubeAudio(url);
+
+    const content = await createContent({
+      type: "YOUTUBE",
+      sourceUrl: url,
+      filePath: audioPath,
+    });
+
+    contentId = content.id;
+
+    await updateContentStatus(content.id, "PROCESSING");
+
+    const transcription = await transcribeAudio(audioPath);
+
+    await createTranscript({
+      contentId: content.id,
+      text: transcription.transcript,
+    });
+
+    await storeTranscriptEmbeddings({
+      contentId: content.id,
+      text: transcription.transcript,
+    });
+
+    const summary = await generateSummary(
+      transcription.transcript,
+    );
+
+    await createSummary({
+      contentId: content.id,
+      text: summary,
+    });
+
+    await updateContentStatus(content.id, "COMPLETED");
+
+    const completedContent =
+      await prisma.content.findUniqueOrThrow({
+        where: {
+          id: content.id,
+        },
+      });
+
+    res.status(201).json({
+      success: true,
+      data: completedContent,
+    });
+  } catch (error) {
+    if (contentId) {
+      await updateContentStatus(contentId, "FAILED");
     }
 
     next(error);
