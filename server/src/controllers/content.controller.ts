@@ -1,15 +1,29 @@
-import { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
+
+import { prisma } from "../lib/prisma.js";
 import { AppError } from "../errors/AppError.js";
-import { createContent, getAllContent, getContentById, deleteContent, updateContentStatus } from "../services/content.service.js";
-import { extractAudio } from "../services/media.service.js";
-import { transcribeAudio, createTranscript } from "../services/transcription.service.js";
-import { createSummary, generateSummary } from "../services/summary.service.js";
+import {
+  createContent,
+  getAllContent,
+  getContentById,
+  deleteContent,
+  updateContentStatus,
+} from "../services/content.service.js";
+import { deleteFile, extractAudio } from "../services/media.service.js";
+import {
+  transcribeAudio,
+  createTranscript,
+} from "../services/transcription.service.js";
+import {
+  createSummary,
+  generateSummary,
+} from "../services/summary.service.js";
 import { storeTranscriptEmbeddings } from "../services/vector.service.js";
 
 export async function createContentController(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const content = await createContent(req.body);
@@ -26,7 +40,7 @@ export async function createContentController(
 export async function getAllContentController(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const content = await getAllContent();
@@ -40,11 +54,10 @@ export async function getAllContentController(
   }
 }
 
-
 export async function getContentByIdController(
   req: Request<{ id: string }>,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const content = await getContentById(req.params.id);
@@ -65,7 +78,7 @@ export async function getContentByIdController(
 export async function deleteContentController(
   req: Request<{ id: string }>,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const content = await deleteContent(req.params.id);
@@ -79,7 +92,6 @@ export async function deleteContentController(
   }
 }
 
-
 /**
  * Processes an uploaded media file by extracting audio, generating a
  * transcript, generating embeddings and a summary, and persisting the results.
@@ -90,6 +102,7 @@ export async function uploadContentController(
   next: NextFunction,
 ) {
   let contentId: string | undefined;
+  let audioPath: string | undefined;
 
   try {
     if (!req.file) {
@@ -111,7 +124,7 @@ export async function uploadContentController(
       "PROCESSING",
     );
 
-    const audioPath = await extractAudio(
+    audioPath = await extractAudio(
       req.file.path,
     );
 
@@ -142,10 +155,17 @@ export async function uploadContentController(
       content.id,
       "COMPLETED",
     );
- 
+
+    const completedContent =
+      await prisma.content.findUniqueOrThrow({
+        where: {
+          id: content.id,
+        },
+      });
+
     res.status(201).json({
       success: true,
-      data: content,
+      data: completedContent,
     });
   } catch (error) {
     if (contentId) {
@@ -156,5 +176,9 @@ export async function uploadContentController(
     }
 
     next(error);
+  } finally {
+    if (audioPath) {
+      await deleteFile(audioPath).catch(() => {});
+    }
   }
 }

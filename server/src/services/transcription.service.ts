@@ -4,7 +4,6 @@ import { prisma } from "../lib/prisma.js";
 
 const SARVAM_API_URL = "https://api.sarvam.ai/speech-to-text";
 
-
 type CreateTranscriptInput = {
   contentId: string;
   text: string;
@@ -12,8 +11,15 @@ type CreateTranscriptInput = {
 };
 
 export async function createTranscript(data: CreateTranscriptInput) {
-  return prisma.transcript.create({
-    data: {
+  return prisma.transcript.upsert({
+    where: {
+      contentId: data.contentId,
+    },
+    update: {
+      text: data.text,
+      language: data.language ?? null,
+    },
+    create: {
       contentId: data.contentId,
       text: data.text,
       language: data.language ?? null,
@@ -58,4 +64,3 @@ export async function transcribeAudio(filePath: string) {
 
   return response.json();
 }
-

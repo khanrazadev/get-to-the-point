@@ -39,10 +39,16 @@ export async function generateSummary(transcript: string) {
  * Persists a generated summary for a content item.
  */
 export async function createSummary(data: CreateSummaryInput) {
-    return prisma.summary.create({
-        data: {
-            contentId: data.contentId,
-            text: data.text,
-        },
-    });
+  return prisma.summary.upsert({
+    where: {
+      contentId: data.contentId,
+    },
+    update: {
+      text: data.text,
+    },
+    create: {
+      contentId: data.contentId,
+      text: data.text,
+    },
+  });
 }

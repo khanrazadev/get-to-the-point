@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import fs from "node:fs/promises";
 import path from "node:path";
 
 const require = createRequire(import.meta.url);
@@ -9,7 +10,7 @@ const ffmpegPath = require("ffmpeg-static") as string;
 const execFileAsync = promisify(execFile);
 
 if (!ffmpegPath) {
-    throw new Error("FFmpeg binary not found");
+  throw new Error("FFmpeg binary not found");
 }
 
 /**
@@ -36,4 +37,8 @@ export async function extractAudio(inputPath: string) {
   ]);
 
   return outputPath;
+}
+
+export async function deleteFile(filePath: string) {
+  await fs.unlink(filePath);
 }
