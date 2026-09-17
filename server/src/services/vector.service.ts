@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma.js";
-import { chunkText } from "./chunk.service.js";
+import { chunkText, TextChunk } from "./chunk.service.js";
 import { generateEmbedding } from "./embedding.service.js";
 
 
@@ -39,12 +39,15 @@ export async function storeEmbedding(data: StoreEmbeddingInput) {
     return id;
 }
 
+type EmbeddedChunk = TextChunk & {
+    embedding: number[];
+};
 export async function storeTranscriptEmbeddings(
     data: StoreTranscriptEmbeddingsInput,
 ) {
     const chunks = chunkText(data.text);
 
-    const embeddings = [];
+    const embeddings: EmbeddedChunk[] = [];
 
     for (const chunk of chunks) {
         const embedding = await generateEmbedding(chunk.text);
