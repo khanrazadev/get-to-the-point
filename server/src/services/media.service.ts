@@ -16,24 +16,24 @@ if (!ffmpegPath) {
  * Extracts mono MP3 audio from an uploaded media file.
  */
 export async function extractAudio(inputPath: string) {
-    const outputPath = path.join(
-        path.dirname(inputPath),
-        `${path.basename(inputPath, path.extname(inputPath))}.mp3`,
-    );
+  const outputPath = path.join(
+    path.dirname(inputPath),
+    `${path.basename(inputPath, path.extname(inputPath))}-audio.mp3`,
+  );
 
-    await execFileAsync(ffmpegPath, [
-        "-i",
-        inputPath,
-        "-vn",
-        "-ac",
-        "1",
-        "-ar",
-        "16000",
-        "-b:a",
-        "64k",
-        "-y",
-        outputPath,
-    ]);
+  await execFileAsync(ffmpegPath, [
+    "-i",
+    inputPath,
+    "-vn",
+    "-ac",
+    "1",
+    "-ar",
+    "16000",
+    "-b:a",
+    "64k",
+    "-y",
+    outputPath,
+  ]);
 
-    return outputPath;
+  return outputPath;
 }

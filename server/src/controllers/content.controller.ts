@@ -4,6 +4,7 @@ import { createContent, getAllContent, getContentById, deleteContent, updateCont
 import { extractAudio } from "../services/media.service.js";
 import { transcribeAudio, createTranscript } from "../services/transcription.service.js";
 import { createSummary, generateSummary } from "../services/summary.service.js";
+import { storeTranscriptEmbeddings } from "../services/vector.service.js";
 
 export async function createContentController(
   req: Request,
@@ -81,7 +82,7 @@ export async function deleteContentController(
 
 /**
  * Processes an uploaded media file by extracting audio, generating a
- * transcript, generating a summary, and persisting the results.
+ * transcript, generating embeddings and a summary, and persisting the results.
  */
 export async function uploadContentController(
   req: Request,
@@ -105,10 +106,17 @@ export async function uploadContentController(
 
     contentId = content.id;
 
-    await updateContentStatus(content.id, "PROCESSING");
+    await updateContentStatus(
+      content.id,
+      "PROCESSING",
+    );
 
-    const audioPath = await extractAudio(req.file.path);
-    const transcription = await transcribeAudio(audioPath);
+    const audioPath = await extractAudio(
+      req.file.path,
+    );
+
+    const transcription =
+      await transcribeAudio(audioPath);
 
     await createTranscript({
       contentId: content.id,
@@ -116,21 +124,35 @@ export async function uploadContentController(
       language: transcription.language_code,
     });
 
-    const summary = await generateSummary(transcription.transcript);
+    await storeTranscriptEmbeddings({
+      contentId: content.id,
+      text: transcription.transcript,
+    });
+
+    const summary = await generateSummary(
+      transcription.transcript,
+    );
 
     await createSummary({
       contentId: content.id,
       text: summary,
     });
-    await updateContentStatus(content.id, "COMPLETED");
 
+    await updateContentStatus(
+      content.id,
+      "COMPLETED",
+    );
+ 
     res.status(201).json({
       success: true,
       data: content,
     });
   } catch (error) {
     if (contentId) {
-      await updateContentStatus(contentId, "FAILED");
+      await updateContentStatus(
+        contentId,
+        "FAILED",
+      );
     }
 
     next(error);

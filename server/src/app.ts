@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { prisma } from "./lib/prisma.js";
 import contentRoutes from "./routes/content.routes.js";
+import chatRoutes from "./routes/chat.routes.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 
 
@@ -35,7 +36,8 @@ app.get("/health", async (req, res) => {
   }
 });
 
-app.use("/api/content", contentRoutes)
+app.use("/api/content", contentRoutes);
+app.use("/api", chatRoutes);
 app.use(errorMiddleware);
 
 export default app;
