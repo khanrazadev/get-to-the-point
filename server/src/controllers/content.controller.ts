@@ -11,7 +11,10 @@ import {
   updateContentStatus,
 } from "../services/content.service.js";
 
-import { deleteFile, extractAudio } from "../services/media.service.js";
+import {
+  deleteFile,
+  extractAudio,
+} from "../services/media.service.js";
 
 import {
   transcribeAudio,
@@ -23,9 +26,13 @@ import {
   generateSummary,
 } from "../services/summary.service.js";
 
-import { storeTranscriptEmbeddings } from "../services/vector.service.js";
+import {
+  storeTranscriptEmbeddings,
+} from "../services/vector.service.js";
 
-import { downloadYoutubeAudio } from "../services/youtube.service.js";
+import {
+  processYouTubeContent,
+} from "../services/youtube-processing.service.js";
 
 export async function createContentController(
   req: Request,
@@ -100,8 +107,8 @@ export async function deleteContentController(
 }
 
 /**
- * Processes an uploaded media file by extracting audio, generating a
- * transcript, generating embeddings and a summary, and persisting the results.
+ * Processes an uploaded media file and persists its transcript,
+ * embeddings, and summary.
  */
 export async function uploadContentController(
   req: Request,
@@ -110,17 +117,20 @@ export async function uploadContentController(
 ) {
   let contentId: string | undefined;
   let audioPath: string | undefined;
+  let uploadedFilePath: string | undefined;
 
   try {
     if (!req.file) {
       throw new AppError("Media file is required", 400);
     }
 
+    uploadedFilePath = req.file.path;
+
     const content = await createContent({
       type: req.file.mimetype.startsWith("audio/")
         ? "AUDIO"
         : "VIDEO",
-      filePath: req.file.path,
+      filePath: uploadedFilePath,
       title: req.file.originalname,
     });
 
@@ -128,7 +138,7 @@ export async function uploadContentController(
 
     await updateContentStatus(content.id, "PROCESSING");
 
-    audioPath = await extractAudio(req.file.path);
+    audioPath = await extractAudio(uploadedFilePath);
 
     const transcription = await transcribeAudio(audioPath);
 
@@ -173,6 +183,21 @@ export async function uploadContentController(
   } finally {
     if (audioPath) {
       await deleteFile(audioPath).catch(() => {});
+    }
+
+    if (uploadedFilePath) {
+      await deleteFile(uploadedFilePath).catch(() => {});
+    }
+
+    if (contentId) {
+      await prisma.content.update({
+        where: {
+          id: contentId,
+        },
+        data: {
+          filePath: null,
+        },
+      }).catch(() => {});
     }
   }
 }
@@ -182,9 +207,6 @@ export async function youtubeContentController(
   res: Response,
   next: NextFunction,
 ) {
-  let contentId: string | undefined;
-  let audioPath: string | undefined;
-
   try {
     const { url } = req.body;
 
@@ -192,61 +214,18 @@ export async function youtubeContentController(
       throw new AppError("YouTube URL is required", 400);
     }
 
-    audioPath = await downloadYoutubeAudio(url);
-
     const content = await createContent({
       type: "YOUTUBE",
       sourceUrl: url,
-      filePath: audioPath,
     });
 
-    contentId = content.id;
+    void processYouTubeContent(content.id, url);
 
-    await updateContentStatus(content.id, "PROCESSING");
-
-    const transcription = await transcribeAudio(audioPath);
-
-    await createTranscript({
-      contentId: content.id,
-      text: transcription.transcript,
-    });
-
-    await storeTranscriptEmbeddings({
-      contentId: content.id,
-      text: transcription.transcript,
-    });
-
-    const summary = await generateSummary(
-      transcription.transcript,
-    );
-
-    await createSummary({
-      contentId: content.id,
-      text: summary,
-    });
-
-    await updateContentStatus(content.id, "COMPLETED");
-
-    const completedContent =
-      await prisma.content.findUniqueOrThrow({
-        where: {
-          id: content.id,
-        },
-      });
-
-    res.status(201).json({
+    res.status(202).json({
       success: true,
-      data: completedContent,
+      data: content,
     });
   } catch (error) {
-    if (contentId) {
-      await updateContentStatus(contentId, "FAILED");
-    }
-
     next(error);
-  } finally {
-    if (audioPath) {
-      await deleteFile(audioPath).catch(() => {});
-    }
   }
 }

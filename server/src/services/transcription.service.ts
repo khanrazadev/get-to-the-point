@@ -71,17 +71,23 @@ export async function transcribeAudio(filePath: string) {
   const chunks = await splitAudioIntoChunks(filePath);
 
   try {
+    const CONCURRENCY = 3;
     const transcripts: string[] = [];
 
-    for (const chunk of chunks) {
-      const result = await transcribeChunk(chunk);
+    for (let i = 0; i < chunks.length; i += CONCURRENCY) {
+      const batch = chunks.slice(i, i + CONCURRENCY);
 
-      transcripts.push(result.transcript);
+      const results = await Promise.all(
+        batch.map((chunk) => transcribeChunk(chunk)),
+      );
+
+      transcripts.push(
+        ...results.map((result) => result.transcript),
+      );
     }
 
     return {
       transcript: transcripts.join(" "),
-      language_code: undefined,
     };
   } finally {
     await Promise.all(

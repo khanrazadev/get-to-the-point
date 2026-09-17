@@ -1,73 +1,83 @@
 import { prisma } from "../lib/prisma.js";
+
 import { chunkText, TextChunk } from "./chunk.service.js";
+
 import { generateEmbedding } from "./embedding.service.js";
 
-
 interface StoreEmbeddingInput {
-    contentId: string;
-    text: string;
-    chunkIndex: number;
-    embedding: number[];
+  contentId: string;
+  text: string;
+  chunkIndex: number;
+  embedding: number[];
 }
-
 
 interface StoreTranscriptEmbeddingsInput {
-    contentId: string;
-    text: string;
-}
-
-export async function storeEmbedding(data: StoreEmbeddingInput) {
-    const id = crypto.randomUUID();
-
-    await prisma.$executeRaw`
-        INSERT INTO "Chunk" (
-            "id",
-            "contentId",
-            "text",
-            "chunkIndex",
-            "embedding"
-        )
-        VALUES (
-            ${id},
-            ${data.contentId},
-            ${data.text},
-            ${data.chunkIndex},
-            ${JSON.stringify(data.embedding)}::vector
-        )
-    `;
-
-    return id;
+  contentId: string;
+  text: string;
 }
 
 type EmbeddedChunk = TextChunk & {
-    embedding: number[];
+  embedding: number[];
 };
+
+export async function storeEmbedding(data: StoreEmbeddingInput) {
+  const id = crypto.randomUUID();
+
+  await prisma.$executeRaw`
+    INSERT INTO "Chunk" (
+      "id",
+      "contentId",
+      "text",
+      "chunkIndex",
+      "embedding"
+    )
+    VALUES (
+      ${id},
+      ${data.contentId},
+      ${data.text},
+      ${data.chunkIndex},
+      ${JSON.stringify(data.embedding)}::vector
+    )
+  `;
+
+  return id;
+}
+
 export async function storeTranscriptEmbeddings(
-    data: StoreTranscriptEmbeddingsInput,
+  data: StoreTranscriptEmbeddingsInput,
 ) {
-    const chunks = chunkText(data.text);
+  const chunks = chunkText(data.text);
 
-    const embeddings: EmbeddedChunk[] = [];
+  const CONCURRENCY = 3;
+  const embeddings: EmbeddedChunk[] = [];
 
-    for (const chunk of chunks) {
+  for (let i = 0; i < chunks.length; i += CONCURRENCY) {
+    const batch = chunks.slice(i, i + CONCURRENCY);
+
+    const results = await Promise.all(
+      batch.map(async (chunk) => {
         const embedding = await generateEmbedding(chunk.text);
 
-        embeddings.push({
-            ...chunk,
-            embedding,
-        });
-    }
+        return {
+          ...chunk,
+          embedding,
+        };
+      }),
+    );
 
-    await prisma.$transaction(async (tx) => {
-        await tx.$executeRaw`
+    embeddings.push(...results);
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`
       DELETE FROM "Chunk"
       WHERE "contentId" = ${data.contentId}
     `;
 
-        for (const chunk of embeddings) {
-            const id = crypto.randomUUID();
+    for (const chunk of embeddings) {
+      const id = crypto.randomUUID();
 
-            await tx.$executeRaw`
+      await tx.$executeRaw`
         INSERT INTO "Chunk" (
           "id",
           "contentId",
@@ -83,31 +93,29 @@ export async function storeTranscriptEmbeddings(
           ${JSON.stringify(chunk.embedding)}::vector
         )
       `;
-        }
-    });
+    }
+  });
 
-    return chunks.length;
+  return chunks.length;
 }
-/*
 
-*/
 const MIN_SIMILARITY = 0.2;
 
 export async function searchSimilarChunks(
-    contentId: string,
-    queryEmbedding: number[],
-    limit = 5,
+  contentId: string,
+  queryEmbedding: number[],
+  limit = 5,
 ) {
-    const vector = JSON.stringify(queryEmbedding);
+  const vector = JSON.stringify(queryEmbedding);
 
-    return prisma.$queryRaw<
-        {
-            id: string;
-            text: string;
-            chunkIndex: number;
-            similarity: number;
-        }[]
-    >`
+  return prisma.$queryRaw<
+    {
+      id: string;
+      text: string;
+      chunkIndex: number;
+      similarity: number;
+    }[]
+  >`
     SELECT
       "id",
       "text",
