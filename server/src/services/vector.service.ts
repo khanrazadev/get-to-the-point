@@ -91,10 +91,12 @@ export async function storeTranscriptEmbeddings(
 /*
 
 */
+const MIN_SIMILARITY = 0.2;
+
 export async function searchSimilarChunks(
     contentId: string,
     queryEmbedding: number[],
-    limit = 5
+    limit = 5,
 ) {
     const vector = JSON.stringify(queryEmbedding);
 
@@ -106,14 +108,15 @@ export async function searchSimilarChunks(
             similarity: number;
         }[]
     >`
-        SELECT
-            "id",
-            "text",
-            "chunkIndex",
-            1 - ("embedding" <=> ${vector}::vector) AS similarity
-        FROM "Chunk"
-        WHERE "contentId" = ${contentId}
-        ORDER BY "embedding" <=> ${vector}::vector
-        LIMIT ${limit}
-    `;
+    SELECT
+      "id",
+      "text",
+      "chunkIndex",
+      1 - ("embedding" <=> ${vector}::vector) AS similarity
+    FROM "Chunk"
+    WHERE "contentId" = ${contentId}
+      AND 1 - ("embedding" <=> ${vector}::vector) >= ${MIN_SIMILARITY}
+    ORDER BY "embedding" <=> ${vector}::vector
+    LIMIT ${limit}
+  `;
 }
