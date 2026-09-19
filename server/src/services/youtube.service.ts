@@ -23,9 +23,3 @@ export async function downloadYoutubeAudio(url: string) {
 
   return outputPath;
 }
-
-const audioPath = await downloadYoutubeAudio(
-  "https://www.youtube.com/watch?v=cV24RCkjcs8",
-);
-
-console.log(audioPath);

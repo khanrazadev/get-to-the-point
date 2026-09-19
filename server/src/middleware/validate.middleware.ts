@@ -11,7 +11,8 @@ export function validate(schema: ZodSchema) {
         .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
         .join(", ");
 
-      throw new AppError(message, 400);
+      next(new AppError(message, 400));
+      return;
     }
 
     req.body = result.data;

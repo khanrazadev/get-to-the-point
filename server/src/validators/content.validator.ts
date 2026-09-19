@@ -6,3 +6,19 @@ export const createContentSchema = z.object({
   filePath: z.string().optional(),
   title: z.string().min(1).max(200).optional(),
 });
+
+export const youtubeContentSchema = z.object({
+  url: z
+    .string()
+    .url()
+    .refine((value) => {
+      const url = new URL(value);
+
+      return [
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "youtu.be",
+      ].includes(url.hostname);
+    }, "Invalid YouTube URL"),
+});
