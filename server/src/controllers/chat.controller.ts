@@ -33,11 +33,7 @@ export async function chatController(
             });
         }
 
-        const user = await prisma.user.findUnique({
-            where: {
-                email: "dev@local.com",
-            },
-        });
+        const user = res.locals.user;
 
         if (!user) {
             return res.status(500).json({

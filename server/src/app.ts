@@ -4,6 +4,8 @@ import { prisma } from "./lib/prisma.js";
 import contentRoutes from "./routes/content.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
+import { clerkMiddleware } from "@clerk/express";
+import { authMiddleware } from "./middleware/auth.middleware.js";
 
 
 const app = express();
@@ -36,8 +38,10 @@ app.get("/health", async (req, res) => {
   }
 });
 
-app.use("/api/content", contentRoutes);
-app.use("/api", chatRoutes);
+app.use(clerkMiddleware())
+
+app.use("/api/content", authMiddleware, contentRoutes);
+app.use("/api", authMiddleware, chatRoutes);
 app.use(errorMiddleware);
 
 export default app;
