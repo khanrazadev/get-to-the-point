@@ -3,7 +3,8 @@
 html,
 body,
 #root {
-  min-height: 100%;
+  width: 100%;
+  height: 100%;
 }
 
 html {
@@ -12,27 +13,23 @@ html {
 
 body {
   min-width: 320px;
+  margin: 0;
+  background: #f5f3ee;
 }
 
 @theme {
   --color-background: #f5f3ee;
   --color-foreground: #20211f;
-
   --color-card: #fbfaf7;
   --color-card-foreground: #20211f;
-
   --color-muted: #ebe8e0;
   --color-muted-foreground: #77756e;
-
   --color-border: #ddd9cf;
   --color-input: #ddd9cf;
-
   --color-primary: #20211f;
   --color-primary-foreground: #fbfaf7;
-
   --color-accent: #71806b;
   --color-accent-foreground: #fbfaf7;
-
   --color-destructive: #b9684d;
   --color-destructive-foreground: #fbfaf7;
 }
@@ -43,12 +40,6 @@ body {
   background: #f5f3ee;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
 }
 
 button,

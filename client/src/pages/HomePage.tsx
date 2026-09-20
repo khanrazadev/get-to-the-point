@@ -7,8 +7,6 @@ import {
   Upload,
 } from "lucide-react";
 
-import { Link } from "react-router-dom";
-
 import {
   createYouTubeContent,
   getContent,
@@ -108,7 +106,13 @@ function HomePage() {
             the original content.
           </p>
 
-          <div className="mt-10 max-w-3xl border border-border bg-card">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSubmit();
+            }}
+            className="mt-10 max-w-3xl border border-border bg-card"
+          >
             <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
               <LinkIcon className="hidden size-4 shrink-0 text-muted-foreground sm:block" />
 
@@ -119,17 +123,16 @@ function HomePage() {
                   setUrl(event.target.value)
                 }
                 placeholder="Paste a YouTube or Instagram URL..."
+                disabled={isSubmitting}
                 className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none placeholder:text-muted-foreground"
               />
 
               <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSubmitting}
+                type="submit"
+                disabled={!url.trim() || isSubmitting}
                 className="inline-flex items-center justify-center gap-2 bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? "Analyzing..." : "Analyze"}
-
                 <ArrowUpRight className="size-4" />
               </button>
             </div>
@@ -143,7 +146,7 @@ function HomePage() {
                 Upload audio or video
               </button>
             </div>
-          </div>
+          </form>
 
           {error && (
             <p className="mt-3 text-sm text-destructive">
@@ -162,9 +165,7 @@ function HomePage() {
 
             <span className="font-mono text-xs text-muted-foreground">
               {content.length}{" "}
-              {content.length === 1
-                ? "item"
-                : "items"}
+              {content.length === 1 ? "item" : "items"}
             </span>
           </div>
 

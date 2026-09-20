@@ -15,7 +15,7 @@ function AppShell({ children }: AppShellProps) {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Header />
 
-        <main className="min-h-0 flex-1">
+        <main className="min-h-0 flex-1 overflow-hidden">
           {children}
         </main>
       </div>

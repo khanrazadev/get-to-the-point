@@ -1,3 +1,4 @@
+import type { ChatResponse } from "@/types/chat";
 import type { Content, ContentDetails } from "@/types/content";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -65,3 +66,21 @@ export async function getContentById(
   );
 }
 
+export async function sendChatMessage(
+  contentId: string,
+  question: string,
+  token: string,
+  sessionId?: string,
+) {
+  return apiRequest<ChatResponse>(
+    `/api/content/${contentId}/chat`,
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        question,
+        ...(sessionId && { sessionId }),
+      }),
+    },
+  );
+}

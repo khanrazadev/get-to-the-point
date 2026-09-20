@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 
 import { prisma } from "../lib/prisma.js";
+
 import { AppError } from "../errors/AppError.js";
 
 import {
@@ -40,7 +41,12 @@ export async function createContentController(
   next: NextFunction,
 ) {
   try {
-    const content = await createContent(req.body);
+    const user = res.locals.user;
+
+    const content = await createContent(
+      user.id,
+      req.body,
+    );
 
     res.status(201).json({
       success: true,
@@ -57,7 +63,9 @@ export async function getAllContentController(
   next: NextFunction,
 ) {
   try {
-    const content = await getAllContent();
+    const user = res.locals.user;
+
+    const content = await getAllContent(user.id);
 
     res.status(200).json({
       success: true,
@@ -74,7 +82,12 @@ export async function getContentByIdController(
   next: NextFunction,
 ) {
   try {
-    const content = await getContentById(req.params.id);
+    const user = res.locals.user;
+
+    const content = await getContentById(
+      user.id,
+      req.params.id,
+    );
 
     if (!content) {
       throw new AppError("Content not found", 404);
@@ -95,7 +108,16 @@ export async function deleteContentController(
   next: NextFunction,
 ) {
   try {
-    const content = await deleteContent(req.params.id);
+    const user = res.locals.user;
+
+    const content = await deleteContent(
+      user.id,
+      req.params.id,
+    );
+
+    if (content.count === 0) {
+      throw new AppError("Content not found", 404);
+    }
 
     res.status(200).json({
       success: true,
@@ -124,9 +146,11 @@ export async function uploadContentController(
       throw new AppError("Media file is required", 400);
     }
 
+    const user = res.locals.user;
+
     uploadedFilePath = req.file.path;
 
-    const content = await createContent({
+    const content = await createContent(user.id, {
       type: req.file.mimetype.startsWith("audio/")
         ? "AUDIO"
         : "VIDEO",
@@ -136,7 +160,10 @@ export async function uploadContentController(
 
     contentId = content.id;
 
-    await updateContentStatus(content.id, "PROCESSING");
+    await updateContentStatus(
+      content.id,
+      "PROCESSING",
+    );
 
     audioPath = await extractAudio(uploadedFilePath);
 
@@ -161,7 +188,10 @@ export async function uploadContentController(
       text: summary,
     });
 
-    await updateContentStatus(content.id, "COMPLETED");
+    await updateContentStatus(
+      content.id,
+      "COMPLETED",
+    );
 
     const completedContent =
       await prisma.content.findUniqueOrThrow({
@@ -176,7 +206,10 @@ export async function uploadContentController(
     });
   } catch (error) {
     if (contentId) {
-      await updateContentStatus(contentId, "FAILED");
+      await updateContentStatus(
+        contentId,
+        "FAILED",
+      );
     }
 
     next(error);
@@ -190,14 +223,16 @@ export async function uploadContentController(
     }
 
     if (contentId) {
-      await prisma.content.update({
-        where: {
-          id: contentId,
-        },
-        data: {
-          filePath: null,
-        },
-      }).catch(() => {});
+      await prisma.content
+        .update({
+          where: {
+            id: contentId,
+          },
+          data: {
+            filePath: null,
+          },
+        })
+        .catch(() => {});
     }
   }
 }
@@ -211,15 +246,23 @@ export async function youtubeContentController(
     const { url } = req.body;
 
     if (typeof url !== "string" || !url.trim()) {
-      throw new AppError("YouTube URL is required", 400);
+      throw new AppError(
+        "YouTube URL is required",
+        400,
+      );
     }
 
-    const content = await createContent({
+    const user = res.locals.user;
+
+    const content = await createContent(user.id, {
       type: "YOUTUBE",
       sourceUrl: url,
     });
 
-    void processYouTubeContent(content.id, url);
+    void processYouTubeContent(
+      content.id,
+      url,
+    );
 
     res.status(202).json({
       success: true,
