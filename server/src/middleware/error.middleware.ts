@@ -28,6 +28,14 @@ export function errorMiddleware(
     return;
   }
 
+  if (error instanceof AppError) {
+    res.status(error.statusCode).json({
+      success: false,
+      message: error.message,
+    });
+    return;
+  }
+
   if (error instanceof Error) {
     res.status(500).json({
       success: false,
@@ -35,8 +43,6 @@ export function errorMiddleware(
     });
     return;
   }
-
-
 
   res.status(500).json({
     success: false,

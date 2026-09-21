@@ -20,7 +20,9 @@ async function apiRequest<T>(
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(options.body instanceof FormData
+        ? {}
+        : { "Content-Type": "application/json" }),
       Authorization: `Bearer ${token}`,
       ...options.headers,
     },
@@ -81,6 +83,37 @@ export async function sendChatMessage(
         question,
         ...(sessionId && { sessionId }),
       }),
+    },
+  );
+}
+
+export async function uploadContent(
+  file: File,
+  token: string,
+) {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  return apiRequest<ApiResponse<Content>>(
+    "/api/content/upload",
+    token,
+    {
+      method: "POST",
+      body: formData,
+    },
+  );
+}
+
+export async function deleteContent(
+  id: string,
+  token: string,
+) {
+  return apiRequest<ApiResponse<{ count: number }>>(
+    `/api/content/${id}`,
+    token,
+    {
+      method: "DELETE",
     },
   );
 }

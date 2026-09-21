@@ -1,16 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@clerk/react";
-import {
-  ArrowUpRight,
-  Link as LinkIcon,
-  Upload,
-} from "lucide-react";
+import { ArrowUpRight, Link as LinkIcon, Upload } from "lucide-react";
 
-import {
-  createYouTubeContent,
-  getContent,
-} from "@/lib/api";
+import { createYouTubeContent, getContent, uploadContent } from "@/lib/api";
 
 import type { Content } from "@/types/content";
 
@@ -24,6 +17,8 @@ function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function loadContent() {
     try {
@@ -40,9 +35,7 @@ function HomePage() {
       setContent(response.data);
     } catch (error) {
       setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to load content",
+        error instanceof Error ? error.message : "Failed to load content",
       );
     } finally {
       setIsLoading(false);
@@ -66,28 +59,77 @@ function HomePage() {
         throw new Error("You must be signed in");
       }
 
-      const response = await createYouTubeContent(
-        url.trim(),
-        token,
-      );
+      const response = await createYouTubeContent(url.trim(), token);
 
-      setContent((current) => [
-        response.data,
-        ...current,
-      ]);
+      setContent((current) => [response.data, ...current]);
 
       setUrl("");
     } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong",
-      );
+      setError(error instanceof Error ? error.message : "Something went wrong");
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const MAX_FILE_SIZE = 100 * 1024 * 1024;
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    if (file.size > MAX_FILE_SIZE) {
+      setError("File size must be 100MB or less");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError("");
+
+      const token = await getToken();
+
+      if (!token) {
+        throw new Error("You must be signed in");
+      }
+
+      const response = await uploadContent(file, token);
+
+      setContent((current) => [response.data, ...current]);
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Failed to upload file",
+      );
+    } finally {
+      setIsSubmitting(false);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
+  useEffect(() => {
+    void loadContent();
+  }, []);
+
+  useEffect(() => {
+    const hasProcessingContent = content.some(
+      (item) => item.status === "PROCESSING",
+    );
+
+    if (!hasProcessingContent) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      void loadContent();
+    }, 3000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [content]);
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <section className="shrink-0 border-b border-border">
@@ -101,9 +143,8 @@ function HomePage() {
           </h1>
 
           <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground">
-            Turn videos and audio into concise summaries,
-            searchable transcripts, and answers grounded in
-            the original content.
+            Turn videos and audio into concise summaries, searchable
+            transcripts, and answers grounded in the original content.
           </p>
 
           <form
@@ -119,9 +160,7 @@ function HomePage() {
               <input
                 type="url"
                 value={url}
-                onChange={(event) =>
-                  setUrl(event.target.value)
-                }
+                onChange={(event) => setUrl(event.target.value)}
                 placeholder="Paste a YouTube or Instagram URL..."
                 disabled={isSubmitting}
                 className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none placeholder:text-muted-foreground"
@@ -138,21 +177,27 @@ function HomePage() {
             </div>
 
             <div className="border-t border-border px-4 py-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="audio/*,video/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+
               <button
                 type="button"
-                className="inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Upload className="size-4" />
-                Upload audio or video
+                {isSubmitting ? "Processing..." : "Upload audio or video"}
               </button>
             </div>
           </form>
 
-          {error && (
-            <p className="mt-3 text-sm text-destructive">
-              {error}
-            </p>
-          )}
+          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
         </div>
       </section>
 
@@ -164,14 +209,16 @@ function HomePage() {
             </h2>
 
             <span className="font-mono text-xs text-muted-foreground">
-              {content.length}{" "}
-              {content.length === 1 ? "item" : "items"}
+              {content.length} {content.length === 1 ? "item" : "items"}
             </span>
           </div>
 
           <ContentList
             content={content}
             isLoading={isLoading}
+            onDeleted={(id) => {
+              setContent((current) => current.filter((item) => item.id !== id));
+            }}
           />
         </div>
       </section>

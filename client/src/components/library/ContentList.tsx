@@ -5,18 +5,14 @@ import type { Content } from "@/types/content";
 type ContentListProps = {
   content: Content[];
   isLoading: boolean;
+  onDeleted: (id: string) => void;
 };
 
-function ContentList({
-  content,
-  isLoading,
-}: ContentListProps) {
+function ContentList({ content, isLoading, onDeleted }: ContentListProps) {
   if (isLoading) {
     return (
       <div className="py-16 text-center">
-        <p className="text-sm text-muted-foreground">
-          Loading your library...
-        </p>
+        <p className="text-sm text-muted-foreground">Loading your library...</p>
       </div>
     );
   }
@@ -34,10 +30,7 @@ function ContentList({
   return (
     <div>
       {content.map((item) => (
-        <ContentListItem
-          key={item.id}
-          content={item}
-        />
+        <ContentListItem onDeleted={onDeleted} key={item.id} content={item} />
       ))}
     </div>
   );

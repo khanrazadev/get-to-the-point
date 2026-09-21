@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@clerk/react";
-import { ArrowUp, Loader2 } from "lucide-react";
+import {
+  ArrowUp,
+  Loader2,
+} from "lucide-react";
 
 import { sendChatMessage } from "@/lib/api";
 
@@ -14,20 +17,38 @@ type ChatSectionProps = {
   contentId: string;
 };
 
-function ChatSection({ contentId }: ChatSectionProps) {
+function ChatSection({
+  contentId,
+}: ChatSectionProps) {
   const { getToken } = useAuth();
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] =
+    useState<ChatMessage[]>([]);
 
-  const [question, setQuestion] = useState("");
-  const [sessionId, setSessionId] = useState<string>();
+  const [question, setQuestion] =
+    useState("");
 
-  const [isSending, setIsSending] = useState(false);
+  const [sessionId, setSessionId] =
+    useState<string>();
 
-  const [error, setError] = useState("");
+  const [isSending, setIsSending] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const messagesEndRef =
+    useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [messages, isSending]);
 
   async function handleSubmit() {
-    const trimmedQuestion = question.trim();
+    const trimmedQuestion =
+      question.trim();
 
     if (!trimmedQuestion || isSending) {
       return;
@@ -40,8 +61,24 @@ function ChatSection({ contentId }: ChatSectionProps) {
       const token = await getToken();
 
       if (!token) {
-        throw new Error("You must be signed in");
+        throw new Error(
+          "You must be signed in",
+        );
       }
+
+      setQuestion("");
+
+      const response =
+        await sendChatMessage(
+          contentId,
+          trimmedQuestion,
+          token,
+          sessionId,
+        );
+
+      setSessionId(
+        response.sessionId,
+      );
 
       setMessages((current) => [
         ...current,
@@ -49,23 +86,6 @@ function ChatSection({ contentId }: ChatSectionProps) {
           role: "USER",
           content: trimmedQuestion,
         },
-      ]);
-
-      setQuestion("");
-
-      const response = await sendChatMessage(
-        contentId,
-        trimmedQuestion,
-        token,
-        sessionId,
-      );
-
-      console.log("CHAT RESPONSE:", response);
-
-      setSessionId(response.sessionId);
-
-      setMessages((current) => [
-        ...current,
         {
           role: "ASSISTANT",
           content: response.answer,
@@ -73,7 +93,9 @@ function ChatSection({ contentId }: ChatSectionProps) {
       ]);
     } catch (error) {
       setError(
-        error instanceof Error ? error.message : "Failed to send message",
+        error instanceof Error
+          ? error.message
+          : "Failed to send message",
       );
     } finally {
       setIsSending(false);
@@ -87,30 +109,81 @@ function ChatSection({ contentId }: ChatSectionProps) {
           Ask the archive
         </p>
 
-        <h2 className="mt-1 text-base font-medium">Chat with this content</h2>
+        <h2 className="mt-1 text-base font-medium">
+          Chat with this content
+        </h2>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto py-6">
-        {messages.length === 0 ? (
+        {messages.length === 0 && !isSending ? (
           <div className="max-w-xs">
             <p className="text-sm leading-6 text-muted-foreground">
-              Ask a question about the transcript, ideas, or anything covered in
-              this content.
+              Ask a question about the
+              transcript, ideas, or anything
+              covered in this content.
             </p>
           </div>
         ) : (
-          <div className="space-y-7">
-            {messages.map((message, index) => (
-              <div key={`${message.role}-${index}`} className="space-y-2">
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                  {message.role === "USER" ? "You" : "Archive"}
-                </p>
+          <div className="space-y-6">
+            {messages.map(
+              (message, index) => {
+                const isUser =
+                  message.role === "USER";
 
-                <p className="whitespace-pre-line text-sm leading-7">
-                  {message.content}
-                </p>
+                return (
+                  <div
+                    key={`${message.role}-${index}`}
+                    className={`flex ${
+                      isUser
+                        ? "justify-end"
+                        : "justify-start"
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[85%] ${
+                        isUser
+                          ? "items-end"
+                          : "items-start"
+                      }`}
+                    >
+                      <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                        {isUser
+                          ? "You"
+                          : "Archive"}
+                      </p>
+
+                      <div
+                        className={
+                          isUser
+                            ? "bg-primary px-4 py-3 text-sm leading-6 text-primary-foreground"
+                            : "border border-border bg-card px-4 py-3 text-sm leading-6"
+                        }
+                      >
+                        <p className="whitespace-pre-line">
+                          {message.content}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              },
+            )}
+
+            {isSending && (
+              <div className="flex justify-start">
+                <div>
+                  <p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                    Archive
+                  </p>
+
+                  <div className="border border-border bg-card px-4 py-3">
+                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                  </div>
+                </div>
               </div>
-            ))}
+            )}
+
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
@@ -125,9 +198,14 @@ function ChatSection({ contentId }: ChatSectionProps) {
         >
           <textarea
             value={question}
-            onChange={(event) => setQuestion(event.target.value)}
+            onChange={(event) =>
+              setQuestion(event.target.value)
+            }
             onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
+              if (
+                event.key === "Enter" &&
+                !event.shiftKey
+              ) {
                 event.preventDefault();
                 void handleSubmit();
               }
@@ -145,7 +223,10 @@ function ChatSection({ contentId }: ChatSectionProps) {
 
             <button
               type="submit"
-              disabled={!question.trim() || isSending}
+              disabled={
+                !question.trim() ||
+                isSending
+              }
               className="inline-flex size-8 items-center justify-center bg-primary text-primary-foreground transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {isSending ? (
@@ -157,7 +238,11 @@ function ChatSection({ contentId }: ChatSectionProps) {
           </div>
         </form>
 
-        {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+        {error && (
+          <p className="mt-2 text-xs text-destructive">
+            {error}
+          </p>
+        )}
       </div>
     </section>
   );

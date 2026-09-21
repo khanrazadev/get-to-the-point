@@ -1,6 +1,8 @@
 import multer from "multer";
 import path from "node:path";
 
+import { AppError } from "../errors/AppError.js";
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     cb(null, "uploads/");
@@ -24,9 +26,13 @@ const allowedMimeTypes = new Set([
   "video/webm",
 ]);
 
-const fileFilter: multer.Options["fileFilter"] = (_req, file, cb) => {
+const fileFilter: multer.Options["fileFilter"] = (
+  _req,
+  file,
+  cb,
+) => {
   if (!allowedMimeTypes.has(file.mimetype)) {
-    cb(new Error("Unsupported file type"));
+    cb(new AppError("Unsupported file type", 400));
     return;
   }
 
