@@ -1,5 +1,7 @@
 import { InferenceClient } from "@huggingface/inference";
 
+import { prisma } from "../lib/prisma.js";
+
 import { generateEmbedding } from "./embedding.service.js";
 import { searchSimilarChunks } from "./vector.service.js";
 
@@ -25,8 +27,7 @@ export async function answerQuestion(
     throw new Error("HUGGINGFACE_API_KEY is not defined");
   }
 
-  const queryEmbedding =
-    await generateEmbedding(question);
+  const queryEmbedding = await generateEmbedding(question);
 
   const chunks = await searchSimilarChunks(
     contentId,
@@ -36,16 +37,19 @@ export async function answerQuestion(
 
   const topScore = chunks[0]?.similarity ?? -1;
 
-  if (topScore < MIN_RELEVANCE_SCORE) {
-    return {
-      answer: "I don't know based on the provided content.",
-      sources: [],
-    };
-  }
+  console.log("\n--- RAG QUERY ---");
+  console.log(question);
 
-  const context = chunks
-    .map((chunk) => chunk.text)
-    .join("\n\n");
+  console.log("\n--- RETRIEVED CHUNKS ---");
+
+  chunks.forEach((chunk, index) => {
+    console.log(`\nChunk ${index + 1}`);
+    console.log("Similarity:", chunk.similarity);
+    console.log("Text:", chunk.text);
+  });
+
+  console.log("\nTop score:", topScore);
+  console.log("-----------------\n");
 
   const historyMessages = history.map((message) => ({
     role:
@@ -55,49 +59,83 @@ export async function answerQuestion(
     content: message.content,
   }));
 
+  let context: string;
+  let sources = chunks;
+
+  if (topScore >= MIN_RELEVANCE_SCORE) {
+    context = chunks
+      .map(
+        (chunk, index) =>
+          `[Retrieved context ${index + 1}]\n${chunk.text}`,
+      )
+      .join("\n\n");
+  } else {
+    const summary = await prisma.summary.findUnique({
+      where: {
+        contentId,
+      },
+    });
+
+    if (!summary) {
+      return {
+        answer: "I don't know based on the provided content.",
+        sources: [],
+      };
+    }
+
+    context = `[Content summary]\n${summary.text}`;
+    sources = [];
+  }
+
   const response = await hf.chatCompletion({
     model: RAG_MODEL,
+
     messages: [
       {
         role: "system",
         content: `
-You are a retrieval-grounded assistant.
+You answer questions about a specific piece of content.
 
-You MUST answer using ONLY the retrieved context.
+Use ONLY the provided context as your source of information.
 
 Rules:
-- The retrieved context is your only source of factual information.
-- Do not use your pretrained knowledge.
-- Do not answer from general world knowledge.
-- Do not assume facts that are not present in the context.
-- Conversation history may only be used to understand references such as "it", "that", or "he".
-- Previous assistant messages are NOT factual evidence.
-- If the retrieved context does not contain enough information to answer the question, say exactly:
+- Answer the user's question directly when the context supports it.
+- You may combine information from different parts of the context.
+- Do not use outside knowledge.
+- Do not invent or assume facts.
+- Conversation history can only be used to understand references such as "it", "that", "they", or "he".
+- Previous assistant messages are not evidence.
+- If the context does not contain enough information to answer the question, say:
 "I don't know based on the provided content."
-- Never answer an unrelated question using your general knowledge.
-- Keep answers concise.
-`.trim(),
-      },
-      ...historyMessages,
-      {
-        role: "user",
-        content: `
-Retrieved context:
-${context}
+- Keep the answer concise and natural.
 
-Current question:
-${question}
+Context:
+${context}
         `.trim(),
       },
+
+      ...historyMessages,
+
+      {
+        role: "user",
+        content: question,
+      },
     ],
+
     max_tokens: 300,
     temperature: 0.1,
   });
 
+  const answer =
+    response.choices[0]?.message?.content ??
+    "I don't know based on the provided content.";
+
+  console.log("\n--- LLM ANSWER ---");
+  console.log(answer);
+  console.log("-----------------\n");
+
   return {
-    answer:
-      response.choices[0]?.message?.content ??
-      "I don't know based on the provided content.",
-    sources: chunks,
+    answer,
+    sources,
   };
 }

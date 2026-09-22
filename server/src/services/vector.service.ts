@@ -99,7 +99,7 @@ export async function storeTranscriptEmbeddings(
   return chunks.length;
 }
 
-const MIN_SIMILARITY = 0.05;
+const MIN_SIMILARITY = -1;
 
 export async function searchSimilarChunks(
   contentId: string,
