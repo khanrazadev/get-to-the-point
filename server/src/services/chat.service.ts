@@ -61,3 +61,26 @@ export async function getChatHistory(sessionId: string) {
     },
   });
 }
+
+export async function getChatSession(
+  userId: string,
+  contentId: string,
+) {
+  return prisma.chatSession.findFirst({
+    where: {
+      userId,
+      contentId,
+    },
+    include: {
+      messages: {
+        orderBy: {
+          createdAt: "asc",
+        },
+        select: {
+          role: true,
+          content: true,
+        },
+      },
+    },
+  });
+}

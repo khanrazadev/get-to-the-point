@@ -1,8 +1,9 @@
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { answerQuestion } from "../services/rag.service.js";
 import {
     createMessage,
     getChatHistory,
+    getChatSession,
     getOrCreateChatSession,
 } from "../services/chat.service.js";
 import { prisma } from "../lib/prisma.js";
@@ -80,4 +81,35 @@ export async function chatController(
             message: "Failed to answer question",
         });
     }
+}
+
+
+export async function getChatSessionController(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const { contentId } = req.params;
+
+    if (typeof contentId !== "string") {
+      return res.status(400).json({
+        message: "contentId is required",
+      });
+    }
+
+    const user = res.locals.user;
+
+    const session = await getChatSession(
+      user.id,
+      contentId,
+    );
+
+    return res.json({
+      success: true,
+      data: session,
+    });
+  } catch (error) {
+    next(error);
+  }
 }
