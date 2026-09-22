@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { useAuth } from "@clerk/react";
-import { Trash2 } from "lucide-react";
+import { ArrowUpRight, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { deleteContent } from "@/lib/api";
@@ -60,22 +60,61 @@ function ContentListItem({
     }
   }
 
+  const title =
+    content.title ??
+    content.sourceUrl ??
+    "Untitled content";
+
+  const date = new Date(
+    content.createdAt,
+  ).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
   return (
     <Link
       to={`/content/${content.id}`}
-      className="group block border-b border-border py-5 transition-colors hover:bg-muted/40"
+      className="group block rounded-xl px-4 py-4 transition-colors hover:bg-white/[0.035]"
     >
-      <article className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium transition-colors group-hover:text-accent">
-            {content.title ??
-              content.sourceUrl ??
-              "Untitled content"}
+      <article className="flex items-center gap-4">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] text-[10px] font-medium text-muted-foreground transition-colors group-hover:bg-accent/10 group-hover:text-accent">
+          {content.type === "YOUTUBE"
+            ? "YT"
+            : content.type === "INSTAGRAM"
+              ? "IG"
+              : content.type === "AUDIO"
+                ? "AU"
+                : "VD"}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground transition-colors group-hover:text-accent">
+            {title}
           </p>
 
-          <p className="mt-1 font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            {content.type} · {content.status}
-          </p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+              {content.type}
+            </span>
+
+            <span className="text-muted-foreground/40">
+              ·
+            </span>
+
+            <span
+              className={`font-mono text-[9px] uppercase tracking-[0.14em] ${
+                content.status === "COMPLETED"
+                  ? "text-accent"
+                  : content.status === "FAILED"
+                    ? "text-destructive"
+                    : "text-muted-foreground"
+              }`}
+            >
+              {content.status}
+            </span>
+          </div>
 
           {error && (
             <p className="mt-2 text-xs text-destructive">
@@ -84,11 +123,9 @@ function ContentListItem({
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-4">
+        <div className="hidden shrink-0 items-center gap-4 sm:flex">
           <span className="text-xs text-muted-foreground">
-            {new Date(
-              content.createdAt,
-            ).toLocaleDateString()}
+            {date}
           </span>
 
           <button
@@ -96,10 +133,16 @@ function ContentListItem({
             onClick={handleDelete}
             disabled={isDeleting}
             aria-label="Delete content"
-            className="p-1 text-muted-foreground opacity-0 transition-all hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md p-1.5 text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Trash2 className="size-4" />
+            <Trash2 className="size-3.5" />
           </button>
+
+          <ArrowUpRight className="size-4 text-muted-foreground/50 transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent" />
+        </div>
+
+        <div className="flex shrink-0 items-center sm:hidden">
+          <ArrowUpRight className="size-4 text-muted-foreground/50" />
         </div>
       </article>
     </Link>

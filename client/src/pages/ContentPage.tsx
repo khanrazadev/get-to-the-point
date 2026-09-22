@@ -7,7 +7,6 @@ import ChatSection from "@/components/content/ChatSection";
 import ContentHeader from "@/components/content/ContentHeader";
 import SummarySection from "@/components/content/SummarySection";
 import TranscriptSection from "@/components/content/TranscriptSection";
-
 import { getContentById } from "@/lib/api";
 
 import type { ContentDetails } from "@/types/content";
@@ -15,18 +14,12 @@ import type { ContentDetails } from "@/types/content";
 type ContentTab = "summary" | "transcript";
 
 function ContentPage() {
-  const { contentId } = useParams<{
-    contentId: string;
-  }>();
-
+  const { contentId } = useParams<{ contentId: string }>();
   const { getToken } = useAuth();
 
-  const [content, setContent] =
-    useState<ContentDetails | null>(null);
-
+  const [content, setContent] = useState<ContentDetails | null>(null);
   const [activeTab, setActiveTab] =
     useState<ContentTab>("summary");
-
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -45,10 +38,7 @@ function ContentPage() {
           throw new Error("You must be signed in");
         }
 
-        const response = await getContentById(
-          contentId,
-          token,
-        );
+        const response = await getContentById(contentId, token);
 
         setContent(response.data);
       } catch (error) {
@@ -68,8 +58,8 @@ function ContentPage() {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-muted-foreground">
-          Loading content...
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+          Loading archive...
         </p>
       </div>
     );
@@ -77,34 +67,27 @@ function ContentPage() {
 
   if (error || !content) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-destructive">
-          {error || "Content not found"}
-        </p>
+      <div className="flex h-full items-center justify-center px-6">
+        <div className="text-center">
+          <p className="text-sm text-destructive">
+            {error || "Content not found"}
+          </p>
+        </div>
       </div>
     );
   }
 
   if (content.status === "PROCESSING") {
     return (
-      <div className="h-full overflow-y-auto">
-        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <ContentHeader content={content} />
+      <div className="flex h-full items-center justify-center px-6">
+        <div className="text-center">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
+            Processing
+          </p>
 
-          <section className="py-16">
-            <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Processing
-            </p>
-
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight">
-              We're working through this content.
-            </h2>
-
-            <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-              The transcript, summary, and searchable knowledge
-              are being prepared.
-            </p>
-          </section>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Your content is still being analyzed.
+          </p>
         </div>
       </div>
     );
@@ -112,79 +95,94 @@ function ContentPage() {
 
   if (content.status === "FAILED") {
     return (
-      <div className="h-full overflow-y-auto">
-        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <ContentHeader content={content} />
+      <div className="flex h-full items-center justify-center px-6">
+        <div className="text-center">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-destructive">
+            Processing failed
+          </p>
 
-          <section className="py-16">
-            <p className="font-mono text-xs uppercase tracking-[0.18em] text-destructive">
-              Processing failed
-            </p>
-
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight">
-              We couldn't process this content.
-            </h2>
-
-            <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-              Please try submitting the source again.
-            </p>
-          </section>
+          <p className="mt-3 text-sm text-muted-foreground">
+            We couldn&apos;t process this content.
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-border">
-        <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+    <div className="relative h-full overflow-hidden">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.025]"
+        style={{
+          backgroundImage: `
+            linear-gradient(#a7b79a 1px, transparent 1px),
+            linear-gradient(90deg, #a7b79a 1px, transparent 1px)
+          `,
+          backgroundSize: "72px 72px",
+          maskImage:
+            "radial-gradient(ellipse at center, black, transparent 75%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse at center, black, transparent 75%)",
+        }}
+      />
+
+      <div className="relative mx-auto flex h-full w-full max-w-7xl flex-col px-5 sm:px-8">
+        <div className="shrink-0 py-7 sm:py-9">
           <ContentHeader content={content} />
         </div>
-      </div>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 px-4 sm:px-6 lg:px-8">
-        <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_380px]">
-          <section className="flex min-h-0 flex-col border-b border-border lg:border-b-0 lg:border-r lg:pr-8">
-            <div className="flex shrink-0 border-b border-border">
-              <button
-                type="button"
-                onClick={() => setActiveTab("summary")}
-                className={`border-b-2 px-1 py-4 mr-6 text-sm transition-colors ${
-                  activeTab === "summary"
-                    ? "border-foreground text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Summary
-              </button>
+        <div className="min-h-0 flex-1 pb-6">
+          <div className="grid h-full min-h-0 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <section className="flex min-h-0 flex-col lg:pr-12">
+              <div className="flex shrink-0 items-center gap-6">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("summary")}
+                  className={`relative pb-3 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
+                    activeTab === "summary"
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Summary
 
-              <button
-                type="button"
-                onClick={() => setActiveTab("transcript")}
-                className={`border-b-2 px-1 py-4 text-sm transition-colors ${
-                  activeTab === "transcript"
-                    ? "border-foreground text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Transcript
-              </button>
-            </div>
+                  {activeTab === "summary" && (
+                    <span className="absolute inset-x-0 bottom-0 h-px bg-accent" />
+                  )}
+                </button>
 
-            <div className="min-h-0 flex-1 overflow-y-auto py-6 pr-4">
-              {activeTab === "summary" ? (
-                <SummarySection
-                  text={content.summary?.text ?? null}
-                />
-              ) : (
-                <TranscriptSection
-                  text={content.transcript?.text ?? null}
-                />
-              )}
-            </div>
-          </section>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("transcript")}
+                  className={`relative pb-3 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
+                    activeTab === "transcript"
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Transcript
 
-          <ChatSection contentId={content.id} />
+                  {activeTab === "transcript" && (
+                    <span className="absolute inset-x-0 bottom-0 h-px bg-accent" />
+                  )}
+                </button>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto pt-8 pr-2">
+                {activeTab === "summary" ? (
+                  <SummarySection
+                    text={content.summary?.text ?? null}
+                  />
+                ) : (
+                  <TranscriptSection
+                    text={content.transcript?.text ?? null}
+                  />
+                )}
+              </div>
+            </section>
+
+            <ChatSection contentId={content.id} />
+          </div>
         </div>
       </div>
     </div>

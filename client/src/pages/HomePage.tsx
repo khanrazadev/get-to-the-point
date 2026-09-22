@@ -23,18 +23,13 @@ type PendingAction =
 
 function HomePage() {
   const { getToken, isSignedIn } = useAuth();
-
   const { openSignIn } = useClerk();
 
   const [url, setUrl] = useState("");
   const [content, setContent] = useState<Content[]>([]);
-
   const [isLoading, setIsLoading] = useState(true);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [error, setError] = useState("");
-
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -85,7 +80,6 @@ function HomePage() {
       const response = await createYouTubeContent(youtubeUrl, token);
 
       setContent((current) => [response.data, ...current]);
-
       setUrl("");
     } catch (error) {
       setError(error instanceof Error ? error.message : "Something went wrong");
@@ -152,7 +146,6 @@ function HomePage() {
 
     if (file.size > MAX_FILE_SIZE) {
       setError("File size must be 100MB or less");
-
       event.target.value = "";
       return;
     }
@@ -209,20 +202,36 @@ function HomePage() {
       window.clearInterval(interval);
     };
   }, [content, isSignedIn]);
-
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <section className="shrink-0 border-b border-border">
-        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
-          <p className="mb-5 font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+    <div className="relative h-full overflow-y-auto">
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div
+          className="absolute animate-grid-drift opacity-[0.08]"
+          style={{
+            backgroundImage: `
+            linear-gradient(#6cae12 1px, transparent 1px),
+            linear-gradient(90deg, #6cae12 1px, transparent 1px)
+          `,
+            backgroundSize: "100px 100px",
+            maskImage:
+              "radial-gradient(ellipse at center, black 15%, transparent 78%)",
+            WebkitMaskImage:
+              "radial-gradient(ellipse at center, black 15%, transparent 78%)",
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 mx-auto flex min-h-full w-full max-w-5xl flex-col px-5 pb-20 sm:px-8">
+        <section className="relative flex flex-col items-center pt-20 text-center sm:pt-28">
+          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-accent">
             Editorial Intelligence Archive
           </p>
 
-          <h1 className="max-w-3xl text-4xl font-semibold tracking-tight md:text-6xl">
-            Make sense of the things you don't have time to watch.
+          <h1 className="mt-6 max-w-3xl text-5xl font-semibold leading-[0.95] tracking-[-0.055em] text-foreground sm:text-7xl">
+            Make sense of the things you don&apos;t have time to watch.
           </h1>
 
-          <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground">
+          <p className="mt-7 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
             Turn videos and audio into concise summaries, searchable
             transcripts, and answers grounded in the original content.
           </p>
@@ -232,10 +241,10 @@ function HomePage() {
               event.preventDefault();
               void handleSubmit();
             }}
-            className="mt-10 max-w-3xl border border-border bg-card"
+            className="mt-10 w-full max-w-xl"
           >
-            <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-              <LinkIcon className="hidden size-4 shrink-0 text-muted-foreground sm:block" />
+            <div className="flex items-center rounded-xl bg-card p-1.5 ring-1 ring-white/[0.06] transition-all duration-300 focus-within:ring-accent/30 focus-within:shadow-[0_0_30px_rgba(108,174,18,0.08)]">
+              <LinkIcon className="ml-3 size-4 shrink-0 text-muted-foreground" />
 
               <input
                 type="url"
@@ -243,55 +252,55 @@ function HomePage() {
                 onChange={(event) => setUrl(event.target.value)}
                 placeholder="Paste a YouTube or Instagram URL..."
                 disabled={isSubmitting}
-                className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none placeholder:text-muted-foreground"
+                className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-50"
               />
 
               <button
                 type="submit"
                 disabled={!url.trim() || isSubmitting}
-                className="inline-flex items-center justify-center gap-2 bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
+                className="group inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground transition-all duration-200 hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-30"
               >
                 {isSubmitting ? "Analyzing..." : "Analyze"}
 
-                <ArrowUpRight className="size-4" />
+                <ArrowUpRight className="size-3.5 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
               </button>
             </div>
 
-            <div className="border-t border-border px-4 py-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="audio/*,video/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*,video/*"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
 
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isSubmitting}
-                className="inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Upload className="size-4" />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isSubmitting}
+              className="mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Upload className="size-3.5" />
 
-                {isSubmitting ? "Processing..." : "Upload audio or video"}
-              </button>
-            </div>
+              {isSubmitting ? "Processing..." : "Upload audio or video"}
+            </button>
           </form>
 
-          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-        </div>
-      </section>
+          {error && <p className="mt-4 text-xs text-destructive">{error}</p>}
+        </section>
 
-      <section className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex items-baseline justify-between border-b border-border pb-3">
-            <h2 className="text-sm font-medium uppercase tracking-wider">
-              Recent
-            </h2>
+        <section className="relative mx-auto mt-24 w-full max-w-4xl">
+          <div className="flex items-center justify-between pb-4">
+            <div className="flex items-center gap-3">
+              <span className="size-1.5 rounded-full bg-accent shadow-[0_0_14px_rgba(108,174,18,0.7)]" />
 
-            <span className="font-mono text-xs text-muted-foreground">
-              {content.length} {content.length === 1 ? "item" : "items"}
+              <h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                Recent
+              </h2>
+            </div>
+
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {content.length.toString().padStart(2, "0")}
             </span>
           </div>
 
@@ -302,8 +311,8 @@ function HomePage() {
               setContent((current) => current.filter((item) => item.id !== id));
             }}
           />
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
