@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
-import { useAuth } from "@clerk/react";
+import { useAuth, useClerk } from "@clerk/react";
+
 import { ArrowUpRight, Link as LinkIcon, Upload } from "lucide-react";
 
 import { createYouTubeContent, getContent, uploadContent } from "@/lib/api";
@@ -9,18 +10,42 @@ import type { Content } from "@/types/content";
 
 import ContentList from "@/components/library/ContentList";
 
+type PendingAction =
+  | {
+      type: "YOUTUBE";
+      url: string;
+    }
+  | {
+      type: "UPLOAD";
+      file: File;
+    }
+  | null;
+
 function HomePage() {
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
+
+  const { openSignIn } = useClerk();
 
   const [url, setUrl] = useState("");
   const [content, setContent] = useState<Content[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [error, setError] = useState("");
+
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function loadContent() {
+    if (!isSignedIn) {
+      setContent([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setError("");
 
@@ -44,11 +69,9 @@ function HomePage() {
 
   useEffect(() => {
     void loadContent();
-  }, []);
+  }, [isSignedIn]);
 
-  async function handleSubmit() {
-    if (!url.trim()) return;
-
+  async function analyzeYouTube(youtubeUrl: string) {
     try {
       setIsSubmitting(true);
       setError("");
@@ -59,7 +82,7 @@ function HomePage() {
         throw new Error("You must be signed in");
       }
 
-      const response = await createYouTubeContent(url.trim(), token);
+      const response = await createYouTubeContent(youtubeUrl, token);
 
       setContent((current) => [response.data, ...current]);
 
@@ -71,18 +94,7 @@ function HomePage() {
     }
   }
 
-  async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const MAX_FILE_SIZE = 100 * 1024 * 1024;
-    const file = event.target.files?.[0];
-
-    if (!file) return;
-
-    if (file.size > MAX_FILE_SIZE) {
-      setError("File size must be 100MB or less");
-      event.target.value = "";
-      return;
-    }
-
+  async function uploadFile(file: File) {
     try {
       setIsSubmitting(true);
       setError("");
@@ -109,11 +121,78 @@ function HomePage() {
     }
   }
 
-  useEffect(() => {
-    void loadContent();
-  }, []);
+  async function handleSubmit() {
+    const trimmedUrl = url.trim();
+
+    if (!trimmedUrl) {
+      return;
+    }
+
+    if (!isSignedIn) {
+      setPendingAction({
+        type: "YOUTUBE",
+        url: trimmedUrl,
+      });
+
+      openSignIn();
+      return;
+    }
+
+    await analyzeYouTube(trimmedUrl);
+  }
+
+  async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const MAX_FILE_SIZE = 100 * 1024 * 1024;
+
+    if (file.size > MAX_FILE_SIZE) {
+      setError("File size must be 100MB or less");
+
+      event.target.value = "";
+      return;
+    }
+
+    if (!isSignedIn) {
+      setPendingAction({
+        type: "UPLOAD",
+        file,
+      });
+
+      event.target.value = "";
+      openSignIn();
+      return;
+    }
+
+    await uploadFile(file);
+  }
 
   useEffect(() => {
+    if (!isSignedIn || !pendingAction) {
+      return;
+    }
+
+    const action = pendingAction;
+
+    setPendingAction(null);
+
+    if (action.type === "YOUTUBE") {
+      void analyzeYouTube(action.url);
+      return;
+    }
+
+    void uploadFile(action.file);
+  }, [isSignedIn, pendingAction]);
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      return;
+    }
+
     const hasProcessingContent = content.some(
       (item) => item.status === "PROCESSING",
     );
@@ -129,7 +208,8 @@ function HomePage() {
     return () => {
       window.clearInterval(interval);
     };
-  }, [content]);
+  }, [content, isSignedIn]);
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <section className="shrink-0 border-b border-border">
@@ -172,6 +252,7 @@ function HomePage() {
                 className="inline-flex items-center justify-center gap-2 bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? "Analyzing..." : "Analyze"}
+
                 <ArrowUpRight className="size-4" />
               </button>
             </div>
@@ -192,6 +273,7 @@ function HomePage() {
                 className="inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Upload className="size-4" />
+
                 {isSubmitting ? "Processing..." : "Upload audio or video"}
               </button>
             </div>
