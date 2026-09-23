@@ -1,17 +1,11 @@
-import { createRequire } from "node:module";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const require = createRequire(import.meta.url);
-const ffmpegPath = require("ffmpeg-static") as string;
-
 const execFileAsync = promisify(execFile);
 
-if (!ffmpegPath) {
-  throw new Error("FFmpeg binary not found");
-}
+const FFMPEG_PATH = "ffmpeg";
 
 /**
  * Extracts mono MP3 audio from an uploaded media file.
@@ -22,7 +16,7 @@ export async function extractAudio(inputPath: string) {
     `${path.basename(inputPath, path.extname(inputPath))}-audio.mp3`,
   );
 
-  await execFileAsync(ffmpegPath, [
+  await execFileAsync(FFMPEG_PATH, [
     "-i",
     inputPath,
     "-vn",
@@ -40,9 +34,8 @@ export async function extractAudio(inputPath: string) {
 }
 
 export async function deleteFile(filePath: string) {
-  await fs.unlink(filePath);
+  await fs.rm(filePath, { force: true });
 }
-
 
 export async function splitAudioIntoChunks(inputPath: string) {
   const outputPattern = path.join(
@@ -50,7 +43,7 @@ export async function splitAudioIntoChunks(inputPath: string) {
     `${path.basename(inputPath, path.extname(inputPath))}-chunk-%03d.mp3`,
   );
 
-  await execFileAsync(ffmpegPath, [
+  await execFileAsync(FFMPEG_PATH, [
     "-i",
     inputPath,
     "-f",

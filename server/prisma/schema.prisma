@@ -17,14 +17,15 @@ model User {
 }
 
 model Content {
-  id          String       @id @default(uuid())
-  userId      String
-  type        ContentType
-  sourceUrl   String?
-  filePath    String?
-  title       String?
-  status      ContentStatus @default(PENDING)
-  createdAt   DateTime     @default(now())
+  id           String        @id @default(uuid())
+  userId       String
+  type         ContentType
+  sourceUrl    String?
+  filePath     String?
+  title        String?
+  status       ContentStatus @default(PENDING)
+  errorMessage String?
+  createdAt    DateTime      @default(now())
 
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   transcript  Transcript?
@@ -32,7 +33,6 @@ model Content {
   chunks      Chunk[]
   chats       ChatSession[]
 }
-
 model Transcript {
   id        String   @id @default(uuid())
   contentId String   @unique

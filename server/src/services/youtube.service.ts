@@ -1,19 +1,22 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 const execFileAsync = promisify(execFile);
 
-const YT_DLP_PATH =
-  "C:\\Users\\Raza\\AppData\\Local\\Microsoft\\WinGet\\Packages\\yt-dlp.yt-dlp_Microsoft.Winget.Source_8wekyb3d8bbwe\\yt-dlp.exe";
+const TEMP_DIR = path.join(os.tmpdir(), "get-to-the-point");
 
 export async function downloadMedia(url: string) {
-  const outputPath = path.resolve(
-    "uploads",
+  await fs.mkdir(TEMP_DIR, { recursive: true });
+
+  const outputPath = path.join(
+    TEMP_DIR,
     `media-${Date.now()}.m4a`,
   );
 
-  await execFileAsync(YT_DLP_PATH, [
+  await execFileAsync("yt-dlp", [
     "-f",
     "ba",
     "-o",

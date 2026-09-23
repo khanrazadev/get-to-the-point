@@ -1,5 +1,3 @@
-import { prisma } from "../lib/prisma.js";
-
 import { updateContentStatus } from "./content.service.js";
 
 import { deleteFile } from "./media.service.js";
@@ -16,20 +14,19 @@ import {
 
 import { storeTranscriptEmbeddings } from "./vector.service.js";
 
-import { downloadMedia } from "./youtube.service.js";
-
 export async function processYouTubeContent(
   contentId: string,
-  url: string,
+  audioPath: string,
 ) {
-  let audioPath: string | undefined;
-
   try {
-    await updateContentStatus(contentId, "PROCESSING");
+    await updateContentStatus(
+      contentId,
+      "PROCESSING",
+    );
 
-    audioPath = await downloadMedia(url);
-
-    const transcription = await transcribeAudio(audioPath);
+    const transcription = await transcribeAudio(
+      audioPath,
+    );
 
     await createTranscript({
       contentId,
@@ -50,17 +47,34 @@ export async function processYouTubeContent(
       text: summary,
     });
 
-    await updateContentStatus(contentId, "COMPLETED");
+    await updateContentStatus(
+      contentId,
+      "COMPLETED",
+    );
   } catch (error) {
-    await updateContentStatus(contentId, "FAILED");
+    const errorMessage =
+      error instanceof Error
+        ? error.message.toLowerCase()
+        : "";
+
+    const userMessage =
+      errorMessage.includes("login required") ||
+      errorMessage.includes("private") ||
+      errorMessage.includes("authentication")
+        ? "Private Instagram content isn't supported. Please use a public Reel."
+        : "We couldn't process this content. Please check the URL and try again.";
+
+    await updateContentStatus(
+      contentId,
+      "FAILED",
+      userMessage,
+    );
 
     console.error(
-      `YouTube processing failed for ${contentId}:`,
+      `Content processing failed for ${contentId}:`,
       error,
     );
   } finally {
-    if (audioPath) {
-      await deleteFile(audioPath).catch(() => {});
-    }
+    await deleteFile(audioPath).catch(() => {});
   }
 }

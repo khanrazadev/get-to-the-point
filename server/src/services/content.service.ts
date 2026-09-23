@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 
 import type { CreateContentInput } from "../types/content.types.js";
+import { normalizeContentUrl } from "../utils/url.util.js";
 
 /**
  * Creates a new content record for the authenticated user.
@@ -10,24 +11,24 @@ import type { CreateContentInput } from "../types/content.types.js";
  * @returns The newly created content record.
  */
 export async function createContent(
-    userId: string,
-    data: CreateContentInput,
+  userId: string,
+  data: CreateContentInput,
 ) {
-    return prisma.content.create({
-        data: {
-            userId,
-            type: data.type,
-            ...(data.sourceUrl !== undefined && {
-                sourceUrl: data.sourceUrl,
-            }),
-            ...(data.filePath !== undefined && {
-                filePath: data.filePath,
-            }),
-            ...(data.title !== undefined && {
-                title: data.title,
-            }),
-        },
-    });
+  return prisma.content.create({
+    data: {
+      userId,
+      type: data.type,
+      ...(data.sourceUrl !== undefined && {
+        sourceUrl: data.sourceUrl,
+      }),
+      ...(data.filePath !== undefined && {
+        filePath: data.filePath,
+      }),
+      ...(data.title !== undefined && {
+        title: data.title,
+      }),
+    },
+  });
 }
 
 /**
@@ -37,12 +38,12 @@ export async function createContent(
  * @returns A list of the user's content records.
  */
 export async function getAllContent(userId: string) {
-    return prisma.content.findMany({
-        where: { userId },
-        orderBy: {
-            createdAt: "desc",
-        },
-    });
+  return prisma.content.findMany({
+    where: { userId },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
 }
 
 /**
@@ -53,19 +54,19 @@ export async function getAllContent(userId: string) {
  * @returns The content record if found and owned by the user, otherwise null.
  */
 export async function getContentById(
-    userId: string,
-    id: string,
+  userId: string,
+  id: string,
 ) {
-    return prisma.content.findFirst({
-        where: {
-            id,
-            userId,
-        },
-        include: {
-            transcript: true,
-            summary: true,
-        },
-    });
+  return prisma.content.findFirst({
+    where: {
+      id,
+      userId,
+    },
+    include: {
+      transcript: true,
+      summary: true,
+    },
+  });
 }
 
 /**
@@ -76,23 +77,55 @@ export async function getContentById(
  * @returns The deleted content record count.
  */
 export async function deleteContent(
-    userId: string,
-    id: string,
+  userId: string,
+  id: string,
 ) {
-    return prisma.content.deleteMany({
-        where: {
-            id,
-            userId,
-        },
-    });
+  return prisma.content.deleteMany({
+    where: {
+      id,
+      userId,
+    },
+  });
 }
 
 export async function updateContentStatus(
-    id: string,
-    status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED",
+  id: string,
+  status:
+    | "PENDING"
+    | "PROCESSING"
+    | "COMPLETED"
+    | "FAILED",
+  errorMessage?: string,
 ) {
-    return prisma.content.update({
-        where: { id },
-        data: { status },
-    });
+  return prisma.content.update({
+    where: { id },
+    data: {
+      status,
+      errorMessage: errorMessage ?? null,
+    },
+  });
+}
+
+export async function findContentByUrl(
+  userId: string,
+  url: string,
+) {
+  const normalizedUrl = normalizeContentUrl(url);
+
+  const contents = await prisma.content.findMany({
+    where: {
+      userId,
+      sourceUrl: {
+        not: null,
+      },
+    },
+  });
+
+  return (
+    contents.find(
+      (content) =>
+        content.sourceUrl &&
+        normalizeContentUrl(content.sourceUrl) === normalizedUrl,
+    ) ?? null
+  );
 }

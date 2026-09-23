@@ -21,6 +21,8 @@ type PendingAction =
     }
   | null;
 
+type SubmissionType = "URL" | "UPLOAD" | null;
+
 function HomePage() {
   const { getToken, isSignedIn } = useAuth();
   const { openSignIn } = useClerk();
@@ -28,17 +30,19 @@ function HomePage() {
   const [url, setUrl] = useState("");
   const [content, setContent] = useState<Content[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionType, setSubmissionType] = useState<SubmissionType>(null);
   const [error, setError] = useState("");
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function loadContent() {
+  const isSubmitting = submissionType !== null;
+
+  async function loadContent(): Promise<boolean> {
     if (!isSignedIn) {
       setContent([]);
       setIsLoading(false);
-      return;
+      return false;
     }
 
     try {
@@ -53,10 +57,14 @@ function HomePage() {
       const response = await getContent(token);
 
       setContent(response.data);
+
+      return true;
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Failed to load content",
       );
+
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +76,7 @@ function HomePage() {
 
   async function analyzeUrl(url: string) {
     try {
-      setIsSubmitting(true);
+      setSubmissionType("URL");
       setError("");
 
       const token = await getToken();
@@ -84,13 +92,13 @@ function HomePage() {
     } catch (error) {
       setError(error instanceof Error ? error.message : "Something went wrong");
     } finally {
-      setIsSubmitting(false);
+      setSubmissionType(null);
     }
   }
 
   async function uploadFile(file: File) {
     try {
-      setIsSubmitting(true);
+      setSubmissionType("UPLOAD");
       setError("");
 
       const token = await getToken();
@@ -107,7 +115,7 @@ function HomePage() {
         error instanceof Error ? error.message : "Failed to upload file",
       );
     } finally {
-      setIsSubmitting(false);
+      setSubmissionType(null);
 
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -194,14 +202,19 @@ function HomePage() {
       return;
     }
 
-    const interval = window.setInterval(() => {
-      void loadContent();
+    const interval = window.setInterval(async () => {
+      const success = await loadContent();
+
+      if (!success) {
+        window.clearInterval(interval);
+      }
     }, 3000);
 
     return () => {
       window.clearInterval(interval);
     };
   }, [content, isSignedIn]);
+
   return (
     <div className="relative h-full overflow-y-auto">
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
@@ -260,7 +273,7 @@ function HomePage() {
                 disabled={!url.trim() || isSubmitting}
                 className="group inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground transition-all duration-200 hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-30"
               >
-                {isSubmitting ? "Analyzing..." : "Analyze"}
+                {submissionType === "URL" ? "Analyzing..." : "Analyze"}
 
                 <ArrowUpRight className="size-3.5 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
               </button>
@@ -282,7 +295,9 @@ function HomePage() {
             >
               <Upload className="size-3.5" />
 
-              {isSubmitting ? "Processing..." : "Upload audio or video"}
+              {submissionType === "UPLOAD"
+                ? "Processing..."
+                : "Upload audio or video"}
             </button>
           </form>
 

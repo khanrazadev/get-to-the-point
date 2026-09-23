@@ -10,6 +10,7 @@ import {
   getContentById,
   deleteContent,
   updateContentStatus,
+  findContentByUrl,
 } from "../services/content.service.js";
 
 import {
@@ -34,6 +35,11 @@ import {
 import {
   processYouTubeContent,
 } from "../services/youtube-processing.service.js";
+
+import {
+  downloadMedia,
+} from "../services/youtube.service.js";
+import { normalizeContentUrl } from "../utils/url.util.js";
 
 export async function createContentController(
   req: Request,
@@ -143,7 +149,10 @@ export async function uploadContentController(
 
   try {
     if (!req.file) {
-      throw new AppError("Media file is required", 400);
+      throw new AppError(
+        "Media file is required",
+        400,
+      );
     }
 
     const user = res.locals.user;
@@ -165,9 +174,12 @@ export async function uploadContentController(
       "PROCESSING",
     );
 
-    audioPath = await extractAudio(uploadedFilePath);
+    audioPath = await extractAudio(
+      uploadedFilePath,
+    );
 
-    const transcription = await transcribeAudio(audioPath);
+    const transcription =
+      await transcribeAudio(audioPath);
 
     await createTranscript({
       contentId: content.id,
@@ -237,13 +249,16 @@ export async function uploadContentController(
   }
 }
 
-function getUrlContentType(url: string): "YOUTUBE" | "INSTAGRAM" {
+function getUrlContentType(
+  url: string,
+): "YOUTUBE" | "INSTAGRAM" {
   try {
     const parsedUrl = new URL(url);
 
     if (
       parsedUrl.hostname === "youtube.com" ||
       parsedUrl.hostname === "www.youtube.com" ||
+      parsedUrl.hostname === "m.youtube.com" ||
       parsedUrl.hostname === "youtu.be"
     ) {
       return "YOUTUBE";
@@ -264,40 +279,92 @@ function getUrlContentType(url: string): "YOUTUBE" | "INSTAGRAM" {
     400,
   );
 }
-
 export async function urlContentController(
   req: Request,
   res: Response,
   next: NextFunction,
 ) {
+  let audioPath: string | undefined;
+
   try {
     const { url } = req.body;
 
-    if (typeof url !== "string" || !url.trim()) {
+    if (
+      typeof url !== "string" ||
+      !url.trim()
+    ) {
       throw new AppError(
         "YouTube or Instagram URL is required",
         400,
       );
     }
 
-    const contentType = getUrlContentType(url.trim());
+    const cleanUrl = url.trim();
+    const contentType = getUrlContentType(cleanUrl);
+    const normalizedUrl = normalizeContentUrl(cleanUrl);
     const user = res.locals.user;
+
+    const existingContent = await findContentByUrl(
+      user.id,
+      normalizedUrl,
+    );
+
+    if (existingContent) {
+      throw new AppError(
+        "This content has already been added to your library.",
+        409,
+      );
+    }
+
+    try {
+      audioPath = await downloadMedia(cleanUrl);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message.toLowerCase()
+          : "";
+
+      if (
+        contentType === "INSTAGRAM" &&
+        (
+          message.includes("login required") ||
+          message.includes("private") ||
+          message.includes("authentication")
+        )
+      ) {
+        throw new AppError(
+          "Private Instagram content isn't supported. Please use a public Reel.",
+          400,
+        );
+      }
+
+      throw new AppError(
+        "We couldn't access this content. Please check the URL and try again.",
+        400,
+      );
+    }
 
     const content = await createContent(user.id, {
       type: contentType,
-      sourceUrl: url.trim(),
+      sourceUrl: normalizedUrl,
     });
 
     void processYouTubeContent(
       content.id,
-      url.trim(),
+      audioPath,
     );
 
     res.status(202).json({
       success: true,
       data: content,
     });
+
+    audioPath = undefined;
   } catch (error) {
+    if (audioPath) {
+      await deleteFile(audioPath).catch(() => { });
+    }
+
     next(error);
   }
 }
