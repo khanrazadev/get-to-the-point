@@ -39,32 +39,32 @@ The main pipeline looks like this:
 
 ```text
 YouTube / Instagram / Upload
-              ↓
-           FFmpeg
-              ↓
-        Transcription
-              ↓
-           Chunking
-              ↓
-          Embeddings
-              ↓
-      PostgreSQL + pgvector
-              ↓
-         User Question
-              ↓
-       Question Embedding
-              ↓
-         Vector Search
-              ↓
-       Relevance Check
-          ↙          ↘
-       Good          Weak
-        ↓              ↓
+            ↓
+         FFmpeg
+            ↓
+      Transcription
+            ↓
+         Chunking
+            ↓
+        Embeddings
+            ↓
+  PostgreSQL + pgvector
+            ↓
+      User Question
+            ↓
+    Question Embedding
+            ↓
+      Vector Search
+            ↓
+     Relevance Check
+       ↙         ↘
+    Good         Weak
+     ↓            ↓
 Retrieved Chunks   Content Summary
-        ↘              ↙
-             Qwen LLM
-                 ↓
-               Answer
+       ↘         ↙
+        Qwen LLM
+           ↓
+        Answer
 ```
 
 The important part is that I don't send the whole transcript to the LLM every time.
@@ -123,10 +123,10 @@ Normalize
 Check user's library
  ↓
 Already exists?
-    ↙       ↘
+    ↙      ↘
   YES        NO
    ↓          ↓
-  409       Download
+  409      Download
               ↓
            Process
 ```
@@ -227,6 +227,7 @@ I dealt with:
 - Stopping polling when the backend becomes unavailable
 - Duplicate URL processing
 - URL normalization
+- Dockerizing the backend and database environment
 
 Most of these were small problems individually, but solving them made me understand the system much better.
 
@@ -246,9 +247,15 @@ Node.js · Express · TypeScript · Prisma
 
 PostgreSQL · pgvector
 
+### Infrastructure
+
+Docker · Docker Compose
+
 ### AI
 
-Sarvam AI · Hugging Face · Qwen
+- **Speech-to-text:** Sarvam AI · `saaras:v3`
+- **Embeddings:** Hugging Face · `sentence-transformers/distiluse-base-multilingual-cased-v2`
+- **LLM:** Qwen · `Qwen/Qwen3-4B-Instruct-2507`
 
 ### Media
 
@@ -270,6 +277,8 @@ get-to-the-point/
 │
 ├── server/
 │   ├── prisma/
+│   ├── Dockerfile
+│   ├── docker-compose.yml
 │   └── src/
 │       ├── controllers/
 │       ├── middleware/
@@ -287,10 +296,11 @@ get-to-the-point/
 
 You can clone the repository, run it locally, and experiment with the full RAG pipeline yourself.
 
-You'll need Node.js, Docker, PostgreSQL + pgvector, FFmpeg, yt-dlp, and API keys for Clerk, Hugging Face, and Sarvam AI.
+You'll need Node.js, Docker, and API keys for Clerk, Hugging Face, and Sarvam AI.
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/get-to-the-point.git
+
 cd get-to-the-point
 ```
 
