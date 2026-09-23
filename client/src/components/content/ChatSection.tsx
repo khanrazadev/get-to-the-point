@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@clerk/react";
 import { ArrowUp, Loader2 } from "lucide-react";
 
-import { sendChatMessage } from "@/lib/api";
+import { getChatSession, sendChatMessage } from "@/lib/api";
 
 type ChatMessage = {
   role: "USER" | "ASSISTANT";
@@ -50,6 +50,14 @@ function ChatSection({ contentId }: ChatSectionProps) {
 
       setQuestion("");
 
+      setMessages((current) => [
+        ...current,
+        {
+          role: "USER",
+          content: trimmedQuestion,
+        },
+      ]);
+
       const response = await sendChatMessage(
         contentId,
         trimmedQuestion,
@@ -61,10 +69,6 @@ function ChatSection({ contentId }: ChatSectionProps) {
 
       setMessages((current) => [
         ...current,
-        {
-          role: "USER",
-          content: trimmedQuestion,
-        },
         {
           role: "ASSISTANT",
           content: response.answer,
@@ -79,8 +83,37 @@ function ChatSection({ contentId }: ChatSectionProps) {
     }
   }
 
+  useEffect(() => {
+    async function loadChatSession() {
+      try {
+        const token = await getToken();
+
+        if (!token) {
+          return;
+        }
+
+        const response = await getChatSession(contentId, token);
+
+        if (!response.data) {
+          return;
+        }
+
+        setSessionId(response.data.id);
+        setMessages(response.data.messages);
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load chat history",
+        );
+      }
+    }
+
+    void loadChatSession();
+  }, [contentId, getToken]);
+
   return (
-    <section className="mt-10 flex min-h-0 flex-col lg:mt-0 lg:border-l lg:border-white/[0.06] lg:pl-10">
+    <section className="mt-10 flex min-h-0 flex-col lg:mt-0 lg:border-l lg:border-white/6 lg:pl-10">
       <div className="shrink-0 pb-5">
         <div className="flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-accent" />
@@ -153,7 +186,7 @@ function ChatSection({ contentId }: ChatSectionProps) {
             event.preventDefault();
             void handleSubmit();
           }}
-          className="rounded-xl bg-card p-1.5 ring-1 ring-white/[0.06] transition-all focus-within:ring-accent/30"
+          className="rounded-xl bg-card p-1.5 ring-1 ring-white/6 transition-all focus-within:ring-accent/30"
         >
           <textarea
             value={question}

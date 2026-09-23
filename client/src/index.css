@@ -77,5 +77,5 @@ textarea {
 }
 
 .animate-grid-drift {
-  animation: grid-drift 10s linear infinite;
+  animation: grid-drift 20s linear infinite;
 }

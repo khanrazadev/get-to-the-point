@@ -187,7 +187,7 @@ function HomePage() {
     }
 
     const hasProcessingContent = content.some(
-      (item) => item.status === "PROCESSING",
+      (item) => item.status === "PENDING" || item.status === "PROCESSING",
     );
 
     if (!hasProcessingContent) {
@@ -206,7 +206,7 @@ function HomePage() {
     <div className="relative h-full overflow-y-auto">
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div
-          className="absolute animate-grid-drift opacity-[0.08]"
+          className="absolute -inset-25 animate-grid-drift opacity-[0.08]"
           style={{
             backgroundImage: `
             linear-gradient(#6cae12 1px, transparent 1px),
@@ -243,7 +243,7 @@ function HomePage() {
             }}
             className="mt-10 w-full max-w-xl"
           >
-            <div className="flex items-center rounded-xl bg-card p-1.5 ring-1 ring-white/[0.06] transition-all duration-300 focus-within:ring-accent/30 focus-within:shadow-[0_0_30px_rgba(108,174,18,0.08)]">
+            <div className="flex items-center rounded-xl bg-card p-1.5 ring-1 ring-white/6 transition-all duration-300 focus-within:ring-accent/30 focus-within:shadow-[0_0_30px_rgba(108,174,18,0.08)]">
               <LinkIcon className="ml-3 size-4 shrink-0 text-muted-foreground" />
 
               <input

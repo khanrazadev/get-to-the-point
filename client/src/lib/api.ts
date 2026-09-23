@@ -117,3 +117,18 @@ export async function deleteContent(
     },
   );
 }
+
+export async function getChatSession(
+  contentId: string,
+  token: string,
+) {
+  return apiRequest<
+    ApiResponse<{
+      id: string;
+      messages: {
+        role: "USER" | "ASSISTANT";
+        content: string;
+      }[];
+    } | null>
+  >(`/api/content/${contentId}/chat`, token);
+}

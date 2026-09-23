@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@clerk/react";
+
 import { useParams } from "react-router-dom";
 
 import ChatSection from "@/components/content/ChatSection";
 import ContentHeader from "@/components/content/ContentHeader";
 import SummarySection from "@/components/content/SummarySection";
 import TranscriptSection from "@/components/content/TranscriptSection";
+
 import { getContentById } from "@/lib/api";
 
 import type { ContentDetails } from "@/types/content";
@@ -38,7 +40,10 @@ function ContentPage() {
           throw new Error("You must be signed in");
         }
 
-        const response = await getContentById(contentId, token);
+        const response = await getContentById(
+          contentId,
+          token,
+        );
 
         setContent(response.data);
       } catch (error) {
@@ -54,6 +59,39 @@ function ContentPage() {
 
     void loadContent();
   }, [contentId, getToken]);
+
+  useEffect(() => {
+    if (
+      !content ||
+      (content.status !== "PENDING" &&
+        content.status !== "PROCESSING")
+    ) {
+      return;
+    }
+
+    const interval = window.setInterval(async () => {
+      try {
+        const token = await getToken();
+
+        if (!token || !contentId) {
+          return;
+        }
+
+        const response = await getContentById(
+          contentId,
+          token,
+        );
+
+        setContent(response.data);
+      } catch {
+        // Keep the current state while polling.
+      }
+    }, 3000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [content, contentId, getToken]);
 
   if (isLoading) {
     return (
@@ -77,7 +115,10 @@ function ContentPage() {
     );
   }
 
-  if (content.status === "PROCESSING") {
+  if (
+    content.status === "PENDING" ||
+    content.status === "PROCESSING"
+  ) {
     return (
       <div className="flex h-full items-center justify-center px-6">
         <div className="text-center">
