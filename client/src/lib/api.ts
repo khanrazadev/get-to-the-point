@@ -37,12 +37,12 @@ async function apiRequest<T>(
   return response.json();
 }
 
-export async function createYouTubeContent(
+export async function createUrlContent(
   url: string,
   token: string,
 ) {
   return apiRequest<ApiResponse<Content>>(
-    "/api/content/youtube",
+    "/api/content/url",
     token,
     {
       method: "POST",

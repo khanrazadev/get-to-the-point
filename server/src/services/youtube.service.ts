@@ -7,10 +7,10 @@ const execFileAsync = promisify(execFile);
 const YT_DLP_PATH =
   "C:\\Users\\Raza\\AppData\\Local\\Microsoft\\WinGet\\Packages\\yt-dlp.yt-dlp_Microsoft.Winget.Source_8wekyb3d8bbwe\\yt-dlp.exe";
 
-export async function downloadYoutubeAudio(url: string) {
+export async function downloadMedia(url: string) {
   const outputPath = path.resolve(
     "uploads",
-    `youtube-${Date.now()}.m4a`,
+    `media-${Date.now()}.m4a`,
   );
 
   await execFileAsync(YT_DLP_PATH, [

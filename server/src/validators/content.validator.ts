@@ -7,7 +7,7 @@ export const createContentSchema = z.object({
   title: z.string().min(1).max(200).optional(),
 });
 
-export const youtubeContentSchema = z.object({
+export const urlContentSchema = z.object({
   url: z
     .string()
     .url()
@@ -19,6 +19,8 @@ export const youtubeContentSchema = z.object({
         "www.youtube.com",
         "m.youtube.com",
         "youtu.be",
+        "instagram.com",
+        "www.instagram.com",
       ].includes(url.hostname);
-    }, "Invalid YouTube URL"),
+    }, "Only YouTube and Instagram URLs are supported"),
 });

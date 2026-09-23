@@ -16,7 +16,7 @@ import {
 
 import { storeTranscriptEmbeddings } from "./vector.service.js";
 
-import { downloadYoutubeAudio } from "./youtube.service.js";
+import { downloadMedia } from "./youtube.service.js";
 
 export async function processYouTubeContent(
   contentId: string,
@@ -27,7 +27,7 @@ export async function processYouTubeContent(
   try {
     await updateContentStatus(contentId, "PROCESSING");
 
-    audioPath = await downloadYoutubeAudio(url);
+    audioPath = await downloadMedia(url);
 
     const transcription = await transcribeAudio(audioPath);
 

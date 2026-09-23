@@ -215,11 +215,11 @@ export async function uploadContentController(
     next(error);
   } finally {
     if (audioPath) {
-      await deleteFile(audioPath).catch(() => {});
+      await deleteFile(audioPath).catch(() => { });
     }
 
     if (uploadedFilePath) {
-      await deleteFile(uploadedFilePath).catch(() => {});
+      await deleteFile(uploadedFilePath).catch(() => { });
     }
 
     if (contentId) {
@@ -232,12 +232,40 @@ export async function uploadContentController(
             filePath: null,
           },
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }
 }
 
-export async function youtubeContentController(
+function getUrlContentType(url: string): "YOUTUBE" | "INSTAGRAM" {
+  try {
+    const parsedUrl = new URL(url);
+
+    if (
+      parsedUrl.hostname === "youtube.com" ||
+      parsedUrl.hostname === "www.youtube.com" ||
+      parsedUrl.hostname === "youtu.be"
+    ) {
+      return "YOUTUBE";
+    }
+
+    if (
+      parsedUrl.hostname === "instagram.com" ||
+      parsedUrl.hostname === "www.instagram.com"
+    ) {
+      return "INSTAGRAM";
+    }
+  } catch {
+    throw new AppError("Invalid URL", 400);
+  }
+
+  throw new AppError(
+    "Only YouTube and Instagram URLs are supported",
+    400,
+  );
+}
+
+export async function urlContentController(
   req: Request,
   res: Response,
   next: NextFunction,
@@ -247,21 +275,22 @@ export async function youtubeContentController(
 
     if (typeof url !== "string" || !url.trim()) {
       throw new AppError(
-        "YouTube URL is required",
+        "YouTube or Instagram URL is required",
         400,
       );
     }
 
+    const contentType = getUrlContentType(url.trim());
     const user = res.locals.user;
 
     const content = await createContent(user.id, {
-      type: "YOUTUBE",
-      sourceUrl: url,
+      type: contentType,
+      sourceUrl: url.trim(),
     });
 
     void processYouTubeContent(
       content.id,
-      url,
+      url.trim(),
     );
 
     res.status(202).json({

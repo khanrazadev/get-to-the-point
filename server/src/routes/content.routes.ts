@@ -6,10 +6,10 @@ import {
     getAllContentController,
     getContentByIdController,
     uploadContentController,
-    youtubeContentController,
+    urlContentController,
 } from "../controllers/content.controller.js";
 
-import { createContentSchema, youtubeContentSchema } from "../validators/content.validator.js";
+import { createContentSchema, urlContentSchema,  } from "../validators/content.validator.js";
 import { validate } from "../middleware/validate.middleware.js";
 import { uploadMedia } from "../middleware/upload.middleware.js";
 
@@ -28,9 +28,9 @@ router.post(
 );
 
 router.post(
-    "/youtube",
-    validate(youtubeContentSchema),
-    youtubeContentController,
+    "/url",
+    validate(urlContentSchema),
+    urlContentController,
 );
 
 router.get("/", getAllContentController);

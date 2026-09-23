@@ -4,7 +4,7 @@ import { useAuth, useClerk } from "@clerk/react";
 
 import { ArrowUpRight, Link as LinkIcon, Upload } from "lucide-react";
 
-import { createYouTubeContent, getContent, uploadContent } from "@/lib/api";
+import { createUrlContent, getContent, uploadContent } from "@/lib/api";
 
 import type { Content } from "@/types/content";
 
@@ -66,7 +66,7 @@ function HomePage() {
     void loadContent();
   }, [isSignedIn]);
 
-  async function analyzeYouTube(youtubeUrl: string) {
+  async function analyzeUrl(url: string) {
     try {
       setIsSubmitting(true);
       setError("");
@@ -77,7 +77,7 @@ function HomePage() {
         throw new Error("You must be signed in");
       }
 
-      const response = await createYouTubeContent(youtubeUrl, token);
+      const response = await createUrlContent(url, token);
 
       setContent((current) => [response.data, ...current]);
       setUrl("");
@@ -132,7 +132,7 @@ function HomePage() {
       return;
     }
 
-    await analyzeYouTube(trimmedUrl);
+    await analyzeUrl(trimmedUrl);
   }
 
   async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -174,7 +174,7 @@ function HomePage() {
     setPendingAction(null);
 
     if (action.type === "YOUTUBE") {
-      void analyzeYouTube(action.url);
+      void analyzeUrl(action.url);
       return;
     }
 
