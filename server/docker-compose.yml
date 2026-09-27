@@ -12,11 +12,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql
 
-  bgutil:
-    image: brainicism/bgutil-ytdlp-pot-provider:2.0.0
-    container_name: get-to-the-point-bgutil
-    restart: unless-stopped
-
   backend:
     build:
       context: .
@@ -31,7 +26,6 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/get_to_the_point
     depends_on:
       - postgres
-      - bgutil
 
 volumes:
   postgres_data:
