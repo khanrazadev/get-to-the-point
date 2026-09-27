@@ -21,7 +21,7 @@ export async function downloadMedia(url: string) {
     "-f",
     "ba",
     "--extractor-args",
-    "youtubepot-bgutilhttp:base_url=http://bgutil:4416",
+    "youtubepot-bgutilhttp:base_url=http://bgutil:4416;disable_innertube=1",
     "-o",
     outputPath,
     url,
