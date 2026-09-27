@@ -19,6 +19,8 @@ export async function downloadMedia(url: string) {
   await execFileAsync("yt-dlp", [
     "-f",
     "ba",
+    "--extractor-args",
+    "youtubepot-bgutilhttp:base_url=http://bgutil:4416",
     "-o",
     outputPath,
     url,
