@@ -319,6 +319,8 @@ export async function urlContentController(
     try {
       audioPath = await downloadMedia(cleanUrl);
     } catch (error) {
+      console.error("URL media download failed:", error);
+
       const message =
         error instanceof Error
           ? error.message.toLowerCase()
@@ -343,7 +345,6 @@ export async function urlContentController(
         400,
       );
     }
-
     const content = await createContent(user.id, {
       type: contentType,
       sourceUrl: normalizedUrl,
