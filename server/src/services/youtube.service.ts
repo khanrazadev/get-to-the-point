@@ -16,6 +16,9 @@ export async function downloadMedia(url: string) {
     `media-${Date.now()}.m4a`,
   );
 
+  const bgutilBaseUrl =
+    process.env.BGUTIL_BASE_URL ?? "http://127.0.0.1:4416";
+
   await execFileAsync("yt-dlp", [
     "-v",
     "-f",
@@ -23,10 +26,12 @@ export async function downloadMedia(url: string) {
     "--extractor-args",
     "youtube:player_client=mweb",
     "--extractor-args",
-    "youtubepot-bgutilhttp:base_url=http://bgutil:4416",
+    `youtubepot-bgutilhttp:base_url=${bgutilBaseUrl}`,
     "-o",
     outputPath,
     url,
   ]);
+
+
   return outputPath;
 }

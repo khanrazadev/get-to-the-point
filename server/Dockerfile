@@ -1,3 +1,5 @@
+FROM brainicism/bgutil-ytdlp-pot-provider:2.0.0 AS bgutil
+
 FROM node:22-bookworm-slim
 
 RUN apt-get update \
@@ -15,6 +17,8 @@ RUN apt-get update \
     && ln -s /root/.deno/bin/deno /usr/local/bin/deno \
     && rm -rf /var/lib/apt/lists/*
 
+COPY --from=bgutil /app /opt/bgutil
+
 WORKDIR /app
 
 COPY package*.json ./
@@ -29,4 +33,4 @@ RUN npm run build
 
 EXPOSE 5000
 
-CMD ["npm", "start"]
+CMD ["sh", "-c", "node /opt/bgutil/build/main.js --host 127.0.0.1 & exec npm start"]
