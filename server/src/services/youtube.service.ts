@@ -17,6 +17,7 @@ export async function downloadMedia(url: string) {
   );
 
   await execFileAsync("yt-dlp", [
+    "-v",
     "-f",
     "ba",
     "--extractor-args",
