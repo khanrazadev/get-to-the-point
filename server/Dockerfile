@@ -6,7 +6,11 @@ RUN apt-get update \
         python3 \
         python3-pip \
         ca-certificates \
-    && pip3 install --break-system-packages yt-dlp \
+        curl \
+        unzip \
+    && pip3 install --break-system-packages "yt-dlp[default]" \
+    && curl -fsSL https://deno.land/install.sh | sh \
+    && ln -s /root/.deno/bin/deno /usr/local/bin/deno \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
