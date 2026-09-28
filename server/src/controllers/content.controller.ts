@@ -40,6 +40,7 @@ import {
   downloadMedia,
 } from "../services/youtube.service.js";
 import { normalizeContentUrl } from "../utils/url.util.js";
+import { getYouTubeTranscript } from "../services/youtube-transcript.service.js";
 
 export async function createContentController(
   req: Request,
@@ -279,13 +280,12 @@ function getUrlContentType(
     400,
   );
 }
+
 export async function urlContentController(
   req: Request,
   res: Response,
   next: NextFunction,
 ) {
-  let audioPath: string | undefined;
-
   try {
     const { url } = req.body;
 
@@ -316,10 +316,63 @@ export async function urlContentController(
       );
     }
 
+    if (contentType === "YOUTUBE") {
+      const transcript =
+        await getYouTubeTranscript(cleanUrl);
+
+      const content = await createContent(user.id, {
+        type: "YOUTUBE",
+        sourceUrl: normalizedUrl,
+      });
+
+      await createTranscript({
+        contentId: content.id,
+        text: transcript,
+      });
+
+      await storeTranscriptEmbeddings({
+        contentId: content.id,
+        text: transcript,
+      });
+
+      const summary = await generateSummary(
+        transcript,
+      );
+
+      await createSummary({
+        contentId: content.id,
+        text: summary,
+      });
+
+      await updateContentStatus(
+        content.id,
+        "COMPLETED",
+      );
+
+      const completedContent =
+        await prisma.content.findUniqueOrThrow({
+          where: {
+            id: content.id,
+          },
+        });
+
+      res.status(201).json({
+        success: true,
+        data: completedContent,
+      });
+
+      return;
+    }
+
+    let audioPath: string | undefined;
+
     try {
       audioPath = await downloadMedia(cleanUrl);
     } catch (error) {
-      console.error("URL media download failed:", error);
+      console.error(
+        "URL media download failed:",
+        error,
+      );
 
       const message =
         error instanceof Error
@@ -327,12 +380,9 @@ export async function urlContentController(
           : "";
 
       if (
-        contentType === "INSTAGRAM" &&
-        (
-          message.includes("login required") ||
-          message.includes("private") ||
-          message.includes("authentication")
-        )
+        message.includes("login required") ||
+        message.includes("private") ||
+        message.includes("authentication")
       ) {
         throw new AppError(
           "Private Instagram content isn't supported. Please use a public Reel.",
@@ -345,8 +395,9 @@ export async function urlContentController(
         400,
       );
     }
+
     const content = await createContent(user.id, {
-      type: contentType,
+      type: "INSTAGRAM",
       sourceUrl: normalizedUrl,
     });
 
@@ -359,13 +410,7 @@ export async function urlContentController(
       success: true,
       data: content,
     });
-
-    audioPath = undefined;
   } catch (error) {
-    if (audioPath) {
-      await deleteFile(audioPath).catch(() => { });
-    }
-
     next(error);
   }
 }
