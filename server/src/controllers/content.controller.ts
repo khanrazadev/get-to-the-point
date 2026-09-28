@@ -1,7 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 
 import { prisma } from "../lib/prisma.js";
-
 import { AppError } from "../errors/AppError.js";
 
 import {
@@ -39,8 +38,8 @@ import {
 import {
   downloadMedia,
 } from "../services/youtube.service.js";
+
 import { normalizeContentUrl } from "../utils/url.util.js";
-import { getYouTubeTranscript } from "../services/youtube-transcript.service.js";
 
 export async function createContentController(
   req: Request,
@@ -228,11 +227,11 @@ export async function uploadContentController(
     next(error);
   } finally {
     if (audioPath) {
-      await deleteFile(audioPath).catch(() => { });
+      await deleteFile(audioPath).catch(() => {});
     }
 
     if (uploadedFilePath) {
-      await deleteFile(uploadedFilePath).catch(() => { });
+      await deleteFile(uploadedFilePath).catch(() => {});
     }
 
     if (contentId) {
@@ -245,7 +244,7 @@ export async function uploadContentController(
             filePath: null,
           },
         })
-        .catch(() => { });
+        .catch(() => {});
     }
   }
 }
@@ -304,6 +303,13 @@ export async function urlContentController(
     const normalizedUrl = normalizeContentUrl(cleanUrl);
     const user = res.locals.user;
 
+    if (contentType === "YOUTUBE") {
+      throw new AppError(
+        "YouTube processing is temporarily unavailable. Please use an Instagram URL or upload a video/audio file instead.",
+        422,
+      );
+    }
+
     const existingContent = await findContentByUrl(
       user.id,
       normalizedUrl,
@@ -314,54 +320,6 @@ export async function urlContentController(
         "This content has already been added to your library.",
         409,
       );
-    }
-
-    if (contentType === "YOUTUBE") {
-      const transcript =
-        await getYouTubeTranscript(cleanUrl);
-
-      const content = await createContent(user.id, {
-        type: "YOUTUBE",
-        sourceUrl: normalizedUrl,
-      });
-
-      await createTranscript({
-        contentId: content.id,
-        text: transcript,
-      });
-
-      await storeTranscriptEmbeddings({
-        contentId: content.id,
-        text: transcript,
-      });
-
-      const summary = await generateSummary(
-        transcript,
-      );
-
-      await createSummary({
-        contentId: content.id,
-        text: summary,
-      });
-
-      await updateContentStatus(
-        content.id,
-        "COMPLETED",
-      );
-
-      const completedContent =
-        await prisma.content.findUniqueOrThrow({
-          where: {
-            id: content.id,
-          },
-        });
-
-      res.status(201).json({
-        success: true,
-        data: completedContent,
-      });
-
-      return;
     }
 
     let audioPath: string | undefined;
