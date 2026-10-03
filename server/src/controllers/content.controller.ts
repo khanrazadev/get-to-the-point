@@ -227,11 +227,11 @@ export async function uploadContentController(
     next(error);
   } finally {
     if (audioPath) {
-      await deleteFile(audioPath).catch(() => {});
+      await deleteFile(audioPath).catch(() => { });
     }
 
     if (uploadedFilePath) {
-      await deleteFile(uploadedFilePath).catch(() => {});
+      await deleteFile(uploadedFilePath).catch(() => { });
     }
 
     if (contentId) {
@@ -244,7 +244,7 @@ export async function uploadContentController(
             filePath: null,
           },
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }
 }
@@ -348,8 +348,20 @@ export async function urlContentController(
         );
       }
 
+      if (
+        message.includes("temporarily limiting requests") ||
+        message.includes("too many requests")
+      ) {
+        throw new AppError(
+          "Instagram is temporarily limiting access. Please try again later or upload the video directly.",
+          429,
+        );
+      }
+
       throw new AppError(
-        "We couldn't access this content. Please check the URL and try again.",
+        error instanceof Error
+          ? error.message
+          : "We couldn't download this media. Please try again or upload the video directly.",
         400,
       );
     }
