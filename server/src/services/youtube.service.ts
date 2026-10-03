@@ -16,22 +16,34 @@ export async function downloadMedia(url: string) {
     `media-${Date.now()}.m4a`,
   );
 
-  const bgutilBaseUrl =
-    process.env.BGUTIL_BASE_URL ?? "http://127.0.0.1:4416";
+  try {
+    await execFileAsync("yt-dlp", [
+      "-f",
+      "ba",
+      "-o",
+      outputPath,
+      url,
+    ]);
+  } catch (error) {
+    const details = error as Error & {
+      stderr?: string;
+      stdout?: string;
+    };
 
-  await execFileAsync("yt-dlp", [
-    "-v",
-    "-f",
-    "ba",
-    "--extractor-args",
-    "youtube:player_client=mweb",
-    "--extractor-args",
-    `youtubepot-bgutilhttp:base_url=${bgutilBaseUrl}`,
-    "-o",
-    outputPath,
-    url,
-  ]);
+    const output = `${details.stderr ?? ""}\n${details.stdout ?? ""}`;
 
+    if (output.includes("429") || output.includes("Too Many Requests")) {
+      throw new Error(
+        "Instagram is temporarily limiting requests from our server. Please try again later or upload the video directly.",
+      );
+    }
+
+    console.error("Media download failed:", details.message);
+
+    throw new Error(
+      "We couldn't download this media. Check that the URL is public, or upload the video directly.",
+    );
+  }
 
   return outputPath;
 }
