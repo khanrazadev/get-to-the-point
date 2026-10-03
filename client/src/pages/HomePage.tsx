@@ -30,6 +30,7 @@ function HomePage() {
   const [url, setUrl] = useState("");
   const [content, setContent] = useState<Content[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isWakingBackend, setIsWakingBackend] = useState(false);
   const [submissionType, setSubmissionType] = useState<SubmissionType>(null);
   const [error, setError] = useState("");
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
@@ -47,6 +48,7 @@ function HomePage() {
 
     try {
       setError("");
+      setIsWakingBackend(true);
 
       const token = await getToken();
 
@@ -66,6 +68,7 @@ function HomePage() {
 
       return false;
     } finally {
+      setIsWakingBackend(false);
       setIsLoading(false);
     }
   }
@@ -222,9 +225,9 @@ function HomePage() {
           className="absolute -inset-25 animate-grid-drift opacity-[0.08]"
           style={{
             backgroundImage: `
-            linear-gradient(#6cae12 1px, transparent 1px),
-            linear-gradient(90deg, #6cae12 1px, transparent 1px)
-          `,
+              linear-gradient(#6cae12 1px, transparent 1px),
+              linear-gradient(90deg, #6cae12 1px, transparent 1px)
+            `,
             backgroundSize: "100px 100px",
             maskImage:
               "radial-gradient(ellipse at center, black 15%, transparent 78%)",
@@ -301,7 +304,9 @@ function HomePage() {
             </button>
           </form>
 
-          {error && <p className="mt-4 text-xs text-destructive">{error}</p>}
+          {error && (
+            <p className="mt-4 max-w-xl text-xs text-destructive">{error}</p>
+          )}
         </section>
 
         <section className="relative mx-auto mt-24 w-full max-w-4xl">
@@ -319,13 +324,29 @@ function HomePage() {
             </span>
           </div>
 
-          <ContentList
-            content={content}
-            isLoading={isLoading}
-            onDeleted={(id) => {
-              setContent((current) => current.filter((item) => item.id !== id));
-            }}
-          />
+          {isWakingBackend ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="mb-4 size-2 animate-pulse rounded-full bg-accent shadow-[0_0_18px_rgba(108,174,18,0.8)]" />
+
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Preparing your workspace
+              </p>
+
+              <p className="mt-2 text-xs text-muted-foreground/70">
+                Getting everything ready...
+              </p>
+            </div>
+          ) : (
+            <ContentList
+              content={content}
+              isLoading={isLoading}
+              onDeleted={(id) => {
+                setContent((current) =>
+                  current.filter((item) => item.id !== id),
+                );
+              }}
+            />
+          )}
         </section>
       </div>
     </div>

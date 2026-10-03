@@ -9,7 +9,7 @@ import {
     urlContentController,
 } from "../controllers/content.controller.js";
 
-import { createContentSchema, urlContentSchema,  } from "../validators/content.validator.js";
+import { createContentSchema, urlContentSchema, } from "../validators/content.validator.js";
 import { validate } from "../middleware/validate.middleware.js";
 import { uploadMedia } from "../middleware/upload.middleware.js";
 
@@ -20,6 +20,13 @@ router.post(
     validate(createContentSchema),
     createContentController,
 );
+
+router.get("/wake", (_req, res) => {
+    res.json({
+        success: true,
+        status: "ready",
+    });
+});
 
 router.post(
     "/upload",
