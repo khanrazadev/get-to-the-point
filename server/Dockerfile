@@ -13,6 +13,7 @@ RUN apt-get update \
     && pip3 install --break-system-packages \
         "yt-dlp[default]" \
         "bgutil-ytdlp-pot-provider==2.0.0" \
+    && yt-dlp --version \
     && curl -fsSL https://deno.land/install.sh | sh \
     && ln -s /root/.deno/bin/deno /usr/local/bin/deno \
     && rm -rf /var/lib/apt/lists/*
